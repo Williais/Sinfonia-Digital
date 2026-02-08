@@ -5,7 +5,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Bem-vindo ao Sinfonia Digital!</Text>
-      <Text style={styles.subtext}>Você está logado.</Text>
+      <Text style={styles.subtext}>Você está logado!</Text>
     </View>
   );
 }

@@ -19,18 +19,21 @@ export default function LoginScreen() {
   const router = useRouter();
 
   async function handleLogin() {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    setLoading(true)
 
-    if (error) {
-      Alert.alert("Erro", error.message);
-    } else {
-      router.replace("/(tabs)/index");
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password
+    })
+
+    if(error) {
+      Alert.alert('Eita, ocorreu um erro: ', error.message)
+
+    }else{
+      router.replace('/(tabs)' as any)
     }
-    setLoading(false);
+
+    setLoading(false)
   }
 
   return (
