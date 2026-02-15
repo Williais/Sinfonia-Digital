@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,12 +12,11 @@ import {
   Image,
   Platform,
   KeyboardAvoidingView
-} from "react-native"
-import { Colors } from "../../constants/Colors"
-import { supabase } from "../../lib/supabase"
-import { useRouter } from "expo-router"
-import { User, Music, Calendar, Instagram, AlignLeft, CheckCircle, Award, Star, CalendarDays } from "lucide-react-native"
-
+} from "react-native";
+import { Colors } from "../../constants/Colors";
+import { supabase } from "../../lib/supabase";
+import { useRouter } from "expo-router";
+import { User, Music, Calendar, Instagram, AlignLeft, CheckCircle, CalendarDays } from "lucide-react-native";
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -34,14 +33,12 @@ export default function OnboardingScreen() {
   const [bio, setBio] = useState("");
   const [birthDate, setBirthDate] = useState("");
 
-  const [isSectionLeader, setIsSectionLeader] = useState(false);
-  const [isSpalla, setIsSpalla] = useState(false);
   const [isInstrumentOwn, setIsInstrumentOwn] = useState(true);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserId(user.id);
-
         setFullName(user.user_metadata.full_name || "");
         setAvatarUrl(user.user_metadata.avatar_url || ""); 
         setNickname(user.user_metadata.full_name?.split(' ')[0] || "");
@@ -51,8 +48,22 @@ export default function OnboardingScreen() {
     });
   }, []);
 
-  async function handleSaveProfile() {
+  // Máscara de Data
+  const dateMask = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '$1/$2')
+      .replace(/(\d{2})(\d)/, '$1/$2')
+      .replace(/(\d{4})\d+?$/, '$1');
+  };
 
+  const convertDateToISO = (dateStr: string) => {
+    if (dateStr.length < 10) return null;
+    const [day, month, year] = dateStr.split('/');
+    return `${year}-${month}-${day}`;
+  };
+
+  async function handleSaveProfile() {
     if (!fullName || !nickname || !instrument || !section || !yearJoined) {
       return Alert.alert("Campos Obrigatórios", "Por favor, preencha Nome, Apelido, Instrumento, Naipe e Ano de Entrada.");
     }
@@ -60,7 +71,6 @@ export default function OnboardingScreen() {
     setLoading(true);
 
     try {
-
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -73,8 +83,8 @@ export default function OnboardingScreen() {
           year_joined: yearJoined,
           instagram_handle: instagram.replace('@', ''),
           bio: bio,
-          is_section_leader: isSectionLeader,
-          is_spalla: isSpalla,
+          is_section_leader: false, 
+          is_spalla: false,
           instrument_ownership: isInstrumentOwn ? 'proprio' : 'cefec',
           role: 'musico',
           status: 'ativo',
@@ -82,29 +92,16 @@ export default function OnboardingScreen() {
           updated_at: new Date(),
         });
 
-      if (error) throw error
+      if (error) throw error;
 
-      router.replace('/(tabs)' as any)
+      router.replace('/(tabs)' as any);
 
     } catch (error: any) {
-      Alert.alert("Erro ao Salvar", error.message)
+      Alert.alert("Erro ao Salvar", error.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
-
-  const dateMask = (value: string) => {
-  return value
-    .replace(/\D/g, '')
-    .replace(/(\d{2})(\d)/, '$1/$2')
-    .replace(/(\d{2})(\d)/, '$1/$2')
-    .replace(/(\d{4})\d+?$/, '$1');
-  };
-
-  const convertDateToISO = (dateStr: string) => {
-    const [day, month, year] = dateStr.split('/');
-    return `${year}-${month}-${day}`;
-  };
 
   return (
     <KeyboardAvoidingView 
@@ -245,30 +242,6 @@ export default function OnboardingScreen() {
             </View>
           </View>
 
-          <View style={styles.switchRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Award size={18} color={Colors.dark.primary} style={{ marginRight: 8 }} />
-              <Text style={styles.switchLabel}>Sou Chefe de Naipe</Text>
-            </View>
-            <Switch 
-              value={isSectionLeader} 
-              onValueChange={setIsSectionLeader}
-              trackColor={{ false: "#333", true: Colors.dark.primary }}
-            />
-          </View>
-
-          <View style={styles.switchRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Star size={18} color="#FFD700" style={{ marginRight: 8 }} />
-              <Text style={styles.switchLabel}>Sou Spalla</Text>
-            </View>
-            <Switch 
-              value={isSpalla} 
-              onValueChange={setIsSpalla}
-              trackColor={{ false: "#333", true: "#FFD700" }}
-            />
-          </View>
-
           <TouchableOpacity 
             style={styles.submitButton}
             onPress={handleSaveProfile}
@@ -377,7 +350,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
   },
-
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

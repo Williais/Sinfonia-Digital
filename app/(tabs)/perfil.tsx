@@ -7,21 +7,23 @@ import {
   TouchableOpacity, 
   Image,
   ActivityIndicator, 
-  Alert
+  Alert,
+  Dimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { profileService } from '../../services/profile.service';
 import { authService } from '../../services/auth.service';
 import { 
-  User, 
   Settings, 
+  Edit3, 
   LogOut, 
-  ChevronRight, 
-  Music,
-  Award,
-  Calendar,
-  Edit3
+  Award, 
+  User, 
+  Bell, 
+  Music
 } from 'lucide-react-native';
+
+const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
@@ -42,25 +44,50 @@ export default function ProfileScreen() {
 
   async function handleLogout() {
     Alert.alert(
-      "Sair",
-      "Tem certeza que deseja desconectar?",
+      "Encerrar Sessão",
+      "Deseja realmente sair do aplicativo?",
       [
         { text: "Cancelar", style: "cancel" },
         { 
           text: "Sair", 
           style: "destructive", 
           onPress: async () => {
-            try {
-              await authService.signOut();
-              router.replace('/(auth)/login' as any);
-            } catch (error: any) {
-              Alert.alert("Erro", error.message);
-            }
+            await authService.signOut();
+            router.replace('/(auth)/login' as any);
           }
         }
       ]
     );
   }
+
+  const renderBadges = () => {
+    if (!profile) return null;
+    
+    return (
+      <View style={styles.badgeContainer}>
+
+        <View style={styles.badgeInstrument}>
+          <Text style={styles.badgeText}>{profile.instrument?.toUpperCase() || "MÚSICO"}</Text>
+        </View>
+
+        {profile.is_spalla && (
+          <View style={styles.badgeRole}>
+            <Text style={styles.badgeTextActive}>SPALLA</Text>
+          </View>
+        )}
+        {!profile.is_spalla && profile.is_section_leader && (
+          <View style={styles.badgeRole}>
+            <Text style={styles.badgeTextActive}>CHEFE DE NAIPE</Text>
+          </View>
+        )}
+        {profile.role === 'admin' || profile.role === 'maestro' && (
+           <View style={styles.badgeRole}>
+           <Text style={styles.badgeTextActive}>{profile.role.toUpperCase()}</Text>
+         </View>
+        )}
+      </View>
+    );
+  };
 
   if (loading) {
     return (
@@ -71,90 +98,113 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      
-      {/* HEADER DO PERFIL */}
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+
       <View style={styles.header}>
-        <View style={styles.avatarContainer}>
-          {profile?.avatar_url ? (
-            <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <User size={40} color="#D48C70" />
-            </View>
-          )}
-          <TouchableOpacity style={styles.editBadge}>
-            <Edit3 size={12} color="#FFF" />
-          </TouchableOpacity>
+        {renderBadges()}
+
+        <View style={styles.profileRow}>
+
+          <View style={styles.avatarContainer}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <User size={40} color="#666" />
+              </View>
+            )}
+          </View>
+
+          <View style={styles.actionButtons}>
+             <TouchableOpacity style={styles.iconButton}>
+                <Edit3 size={20} color="#888" />
+             </TouchableOpacity>
+             <TouchableOpacity style={styles.iconButton}>
+                <Settings size={20} color="#888" />
+             </TouchableOpacity>
+          </View>
         </View>
 
-        <Text style={styles.name}>{profile?.full_name || "Músico"}</Text>
+        <Text style={styles.name}>{profile?.full_name}</Text>
         
-        <View style={styles.roleContainer}>
-          <Music size={14} color="#D48C70" />
-          <Text style={styles.roleText}>
-            {profile?.instrument} • {profile?.section}
-          </Text>
-        </View>
-
-        {profile?.bio && (
-          <Text style={styles.bio}>{profile.bio}</Text>
-        )}
+        <Text style={styles.bio}>
+          {profile?.bio || '"Músico dedicado, apaixonado por harmonia e sempre em busca do tom perfeito."'}
+        </Text>
       </View>
 
-      {/* ESTATÍSTICAS RÁPIDAS (Gamificação Futura) */}
-      <View style={styles.statsRow}>
+
+      <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>12</Text>
-          <Text style={styles.statLabel}>Concertos</Text>
+          <Text style={styles.statValue}>12</Text>
+          <Text style={styles.statLabel}>PARTITURAS</Text> 
+          
         </View>
-        <View style={styles.divider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>98%</Text>
-          <Text style={styles.statLabel}>Frequência</Text>
+        <View style={[styles.statItem, styles.statBorder]}>
+          <Text style={[styles.statValue, { color: '#D48C70' }]}>98%</Text>
+          <Text style={styles.statLabel}>FREQUÊNCIA</Text>
         </View>
-        <View style={styles.divider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>2019</Text>
-          <Text style={styles.statLabel}>Desde</Text>
+          <Text style={styles.statValue}>{profile?.year_joined || '2024'}</Text>
+          <Text style={styles.statLabel}>DESDE</Text>
         </View>
       </View>
 
-      {/* MENU DE OPÇÕES */}
-      <View style={styles.menuContainer}>
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconBox}>
-            <User size={20} color="#9CA3AF" />
+      <Text style={styles.sectionTitle}>CENTRAL DO MÚSICO</Text>
+      
+      <View style={styles.gridContainer}>
+
+        <TouchableOpacity style={styles.gridCard}>
+          <View style={styles.cardIconBg}>
+            <Award size={24} color="#FFD700" />
           </View>
-          <Text style={styles.menuText}>Dados Pessoais</Text>
-          <ChevronRight size={20} color="#374151" />
+          <View>
+            <Text style={styles.cardTitle}>Conquistas</Text>
+            <Text style={styles.cardSubtitle}>Ver medalhas</Text>
+          </View>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconBox}>
-            <Award size={20} color="#9CA3AF" />
+
+        <TouchableOpacity style={styles.gridCard}>
+           <View style={[styles.cardIconBg, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+            <User size={24} color="#3B82F6" />
           </View>
-          <Text style={styles.menuText}>Minhas Conquistas</Text>
-          <ChevronRight size={20} color="#374151" />
+          <View>
+            <Text style={styles.cardTitle}>Dados</Text>
+            <Text style={styles.cardSubtitle}>Editar info</Text>
+          </View>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconBox}>
-            <Settings size={20} color="#9CA3AF" />
+        <TouchableOpacity style={styles.gridCard}>
+           <View style={[styles.cardIconBg, { backgroundColor: 'rgba(168, 85, 247, 0.1)' }]}>
+            <Bell size={24} color="#A855F7" />
           </View>
-          <Text style={styles.menuText}>Configurações</Text>
-          <ChevronRight size={20} color="#374151" />
+          <View>
+            <Text style={styles.cardTitle}>Avisos</Text>
+            <Text style={styles.cardSubtitle}>Mural pessoal</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.gridCard}>
+           <View style={[styles.cardIconBg, { backgroundColor: 'rgba(212, 140, 112, 0.1)' }]}>
+            <Music size={24} color="#D48C70" />
+          </View>
+          <View>
+            <Text style={styles.cardTitle}>Instrumento</Text>
+            <Text style={styles.cardSubtitle}>
+              {profile?.instrument_ownership === 'proprio' ? 'Próprio' : 'C.E.F.E.C.'}
+            </Text>
+          </View>
         </TouchableOpacity>
       </View>
 
-      {/* BOTÃO SAIR */}
+
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <LogOut size={20} color="#EF4444" />
-        <Text style={styles.logoutText}>Sair da Conta</Text>
+        <Text style={styles.logoutText}>Encerrar Sessão</Text>
+        <LogOut size={18} color="#FF6B6B" />
       </TouchableOpacity>
 
-      <Text style={styles.versionText}>v2.0.0 (Dark Edition)</Text>
-      <View style={{ height: 40 }} />
+      <Text style={styles.idText}>Seu ID: {profile?.id?.slice(0, 8).toUpperCase()}</Text>
+
     </ScrollView>
   );
 }
@@ -163,149 +213,189 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0B0F19',
+    paddingHorizontal: 24,
   },
   header: {
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 24,
-    backgroundColor: '#151A26',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    marginTop: 60,
+    marginBottom: 30,
   },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: '#D48C70',
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(212, 140, 112, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#D48C70',
-  },
-  editBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#D48C70',
-    padding: 8,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#151A26',
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginBottom: 8,
-  },
-  roleContainer: {
+  badgeContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  badgeInstrument: {
+    backgroundColor: '#1F2937',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  badgeRole: {
     backgroundColor: 'rgba(212, 140, 112, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D48C70',
+  },
+  badgeText: {
+    color: '#D1D5DB',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  badgeTextActive: {
+    color: '#D48C70',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
-  roleText: {
-    color: '#D48C70',
-    fontSize: 14,
-    fontWeight: '600',
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#FFF',
+    overflow: 'hidden',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1F2937',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 10,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#151A26',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1F2937',
+  },
+  name: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   bio: {
-    color: '#9CA3AF',
     fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 40,
-    lineHeight: 20,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    lineHeight: 22,
   },
-  statsRow: {
+
+  statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    marginBottom: 40,
+    paddingHorizontal: 10,
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
   },
-  statNumber: {
-    color: '#FFF',
-    fontSize: 20,
+  statBorder: {
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#1F2937',
+  },
+  statValue: {
+    fontSize: 24,
     fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 4,
   },
   statLabel: {
+    fontSize: 10,
+    color: '#6B7280',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+
+  sectionTitle: {
     color: '#6B7280',
     fontSize: 12,
-    marginTop: 4,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    marginBottom: 16,
+    textTransform: 'uppercase',
   },
-  divider: {
-    width: 1,
-    height: '80%',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  menuContainer: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  menuItem: {
+  gridContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 30,
+  },
+  gridCard: {
+    width: (width - 48 - 12) / 2,
     backgroundColor: '#151A26',
+    borderRadius: 20,
     padding: 16,
-    borderRadius: 16,
+    height: 140,
+    justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: '#1F2937',
   },
-  menuIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+  cardIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
-  menuText: {
-    flex: 1,
-    color: '#D1D5DB',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 32,
-    marginHorizontal: 20,
-    padding: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    gap: 12,
-  },
-  logoutText: {
-    color: '#EF4444',
+  cardTitle: {
+    color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 4,
   },
-  versionText: {
-    textAlign: 'center',
-    color: '#4B5563',
+  cardSubtitle: {
+    color: '#6B7280',
     fontSize: 12,
-    marginTop: 24,
   },
+
+  logoutButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.2)',
+  },
+  logoutText: {
+    color: '#FF6B6B',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  idText: {
+    textAlign: 'center',
+    color: '#1F2937',
+    fontSize: 10,
+  }
 });
