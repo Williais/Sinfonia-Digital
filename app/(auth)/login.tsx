@@ -1,8 +1,8 @@
-import * as Linking from "expo-linking";
-import { useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
-import { ArrowRight, Chrome, Music } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import * as Linking from "expo-linking"
+import { useRouter } from "expo-router"
+import * as WebBrowser from "expo-web-browser"
+import { ArrowRight, Chrome, Music } from "lucide-react-native"
+import React, { useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
@@ -12,9 +12,10 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from "react-native";
-import { Colors } from "../../constants/Colors";
-import { supabase } from "../../lib/supabase";
+} from "react-native"
+import { Colors } from "../../constants/Colors"
+import { supabase } from "../../lib/supabase"
+import { authService } from "../../services/auth.service"
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -69,27 +70,18 @@ export default function LoginScreen() {
   async function handleGoogleLogin() {
     setLoading(true);
     try {
-      const redirectUrl = Linking.createURL("/google-auth");
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: true,
-        },
-      });
+      const response = await authService.loginGoogle()
 
-      if (error) throw error;
-
-      if (data?.url) {
+      if (response?.url) {
         const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectUrl,
+          response.url,
+          response.redirectUrl
         );
 
         if (result.type === "success" && result.url) {
-          const sessionCreated = await createSessionFromUrl(result.url);
+          const deuBom = await createSessionFromUrl(result.url);
 
-          if (sessionCreated) {
+          if (deuBom) {
             checkProfileAndRedirect();
           } else {
             checkProfileAndRedirect();
@@ -97,7 +89,7 @@ export default function LoginScreen() {
         }
       }
     } catch (error: any) {
-      if (error.message !== "User cancelled")
+      if (error.message !== "Usuario cancelado")
         Alert.alert("Erro", error.message);
     } finally {
       setLoading(false);

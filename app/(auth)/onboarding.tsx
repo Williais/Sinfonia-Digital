@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react"
 import {
   ActivityIndicator,
   Alert,
@@ -12,11 +12,12 @@ import {
   Image,
   Platform,
   KeyboardAvoidingView
-} from "react-native";
-import { Colors } from "../../constants/Colors";
-import { supabase } from "../../lib/supabase";
-import { useRouter } from "expo-router";
-import { User, Music, Calendar, Instagram, AlignLeft, CheckCircle, Award, Star } from "lucide-react-native";
+} from "react-native"
+import { Colors } from "../../constants/Colors"
+import { supabase } from "../../lib/supabase"
+import { useRouter } from "expo-router"
+import { User, Music, Calendar, Instagram, AlignLeft, CheckCircle, Award, Star, CalendarDays } from "lucide-react-native"
+
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function OnboardingScreen() {
   const [yearJoined, setYearJoined] = useState("");
   const [instagram, setInstagram] = useState("");
   const [bio, setBio] = useState("");
+  const [birthDate, setBirthDate] = useState("");
 
   const [isSectionLeader, setIsSectionLeader] = useState(false);
   const [isSpalla, setIsSpalla] = useState(false);
@@ -76,6 +78,7 @@ export default function OnboardingScreen() {
           instrument_ownership: isInstrumentOwn ? 'proprio' : 'cefec',
           role: 'musico',
           status: 'ativo',
+          birth_date: convertDateToISO(birthDate),
           updated_at: new Date(),
         });
 
@@ -89,6 +92,19 @@ export default function OnboardingScreen() {
       setLoading(false);
     }
   }
+
+  const dateMask = (value: string) => {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{2})(\d)/, '$1/$2')
+    .replace(/(\d{2})(\d)/, '$1/$2')
+    .replace(/(\d{4})\d+?$/, '$1');
+  };
+
+  const convertDateToISO = (dateStr: string) => {
+    const [day, month, year] = dateStr.split('/');
+    return `${year}-${month}-${day}`;
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -160,6 +176,19 @@ export default function OnboardingScreen() {
               value={bio}
               onChangeText={setBio}
               maxLength={100}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <CalendarDays size={20} color="#666" style={styles.icon} />
+            <TextInput 
+              placeholder="Data de Nascimento (DD/MM/AAAA)"
+              placeholderTextColor="#666"
+              style={styles.input}
+              value={birthDate}
+              onChangeText={(text) => setBirthDate(dateMask(text))}
+              keyboardType="numeric"
+              maxLength={10}
             />
           </View>
 
