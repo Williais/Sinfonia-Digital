@@ -59,6 +59,11 @@ class AuthService{
             return false;
     }
 
+    async signOut() {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  }
+
 }
 
 // instanciando meu obj
