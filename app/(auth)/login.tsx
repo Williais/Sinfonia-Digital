@@ -43,30 +43,6 @@ export default function LoginScreen() {
     ).start();
   }, []);
 
-  const createSessionFromUrl = async (url: string) => {
-    try {
-      const params = url.split("#")[1] || url.split("?")[1];
-      if (!params) return;
-
-      const searchParams = new URLSearchParams(params);
-      const access_token = searchParams.get("access_token");
-      const refresh_token = searchParams.get("refresh_token");
-
-      if (access_token && refresh_token) {
-        const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token,
-        });
-        if (error) throw error;
-        return true;
-      }
-    } catch (error) {
-      console.log("Erro ao processar URL:", error);
-      return false;
-    }
-    return false;
-  };
-
   async function handleGoogleLogin() {
     setLoading(true);
     try {
@@ -79,11 +55,12 @@ export default function LoginScreen() {
         );
 
         if (result.type === "success" && result.url) {
-          const deuBom = await createSessionFromUrl(result.url);
+          const deuBom = await authService.criarSessao(result.url)
 
           if (deuBom) {
             checkProfileAndRedirect();
           } else {
+            Alert.alert("Erro", "Não foi possível conectar sua conta.");
             checkProfileAndRedirect();
           }
         }
@@ -113,7 +90,7 @@ export default function LoginScreen() {
       .single();
 
     if (profile && profile.full_name && profile.instrument) {
-      router.replace("/(tabs)/index" as any);
+      router.replace("/(tabs)" as any);
     } else {
       router.replace("/(auth)/onboarding" as any);
     }

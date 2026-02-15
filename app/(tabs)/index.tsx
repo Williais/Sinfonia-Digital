@@ -1,93 +1,170 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Colors } from '../../constants/Colors';
-import { Bell, Clock, MapPin, MoreVertical, PlayCircle, ChevronRight, User, BookOpen } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  ActivityIndicator,
+  StatusBar,
+  Image
+} from 'react-native';
+import { profileService } from '../../services/profile.service';
+import { 
+  User, 
+  Clock, 
+  MapPin, 
+  BookOpen, 
+  ChevronRight, 
+  MoreVertical,
+  PlayCircle
+} from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  async function loadUserData() {
+    const data = await profileService.getUserProfile();
+    if (data) {
+      setProfile(data);
+    }
+    setLoading(false);
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#D48C70" />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-
+      <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
+      
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Bem-vindo de volta</Text>
-          <Text style={styles.userName}>Willbacht</Text>
+          <Text style={styles.welcomeLabel}>Bem-vindo de volta,</Text>
+          <Text style={styles.userName}>
+            {profile?.nickname || profile?.full_name || 'Willian José'}
+          </Text>
         </View>
-        <TouchableOpacity style={styles.avatarButton}>
-          <User size={20} color="#FFF" />
+        <TouchableOpacity style={styles.avatarContainer} onPress={() => router.push('/(tabs)/perfil' as any)}>
+            {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+            ) : (
+                <View style={styles.avatarPlaceholder}>
+                    <User size={20} color="#FFF" />
+                </View>
+            )}
         </TouchableOpacity>
       </View>
 
       <View style={styles.heroCard}>
-
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#1A1E2E', opacity: 0.5 }]} />
-        
         <View style={styles.heroHeader}>
-          <View style={styles.tag}>
-            <Text style={styles.tagText}>HOJE</Text>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>HOJE</Text>
           </View>
-          <MoreVertical size={20} color={Colors.dark.textSecondary} />
+          <TouchableOpacity>
+            <MoreVertical size={20} color="#9CA3AF" />
+          </TouchableOpacity>
         </View>
 
-        <Text style={styles.eventTitle}>12º Concerto</Text>
-        <Text style={styles.eventSubtitle}>Repertório Trilhas Sonoras</Text>
+        <Text style={styles.heroTitle}>Sinfonia No. 5</Text>
+        <Text style={styles.heroSubtitle}>Ludwig van Beethoven</Text>
 
         <View style={styles.heroFooter}>
-          <View style={styles.infoBadge}>
-            <Clock size={14} color={Colors.dark.primary} />
-            <Text style={styles.infoText}>19:00</Text>
+          <View style={styles.heroInfoItem}>
+            <Clock size={16} color="#D48C70" /> 
+            <Text style={styles.heroInfoText}>19:00</Text>
           </View>
-          <View style={styles.infoBadge}>
-            <MapPin size={14} color={Colors.dark.primary} />
-            <Text style={styles.infoText}>Quadra do CEFEC</Text>
+          <View style={styles.heroInfoItem}>
+            <MapPin size={16} color="#D48C70" />
+            <Text style={styles.heroInfoText}>Teatro CEFEC</Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <View style={[styles.iconBox, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+      <View style={styles.statsContainer}>
+        <TouchableOpacity style={styles.statCard}>
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
             <Clock size={20} color="#60A5FA" />
           </View>
-          <Text style={styles.statValue}>85%</Text>
-          <Text style={styles.statLabel}>Frequência</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <View style={[styles.iconBox, { backgroundColor: 'rgba(168, 85, 247, 0.1)' }]}>
-            <BookOpen size={20} color="#A855F7" />
+          <View>
+            <Text style={styles.statValue}>85%</Text>
+            <Text style={styles.statLabel}>Frequência</Text>
           </View>
-          <Text style={styles.statValue}>12</Text>
-          <Text style={styles.statLabel}>Novas Partituras</Text>
-        </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.statCard}>
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(168, 85, 247, 0.1)' }]}>
+            <BookOpen size={20} color="#C084FC" />
+          </View>
+          <View>
+            <Text style={styles.statValue}>12</Text>
+            <Text style={styles.statLabel}>Novas Partituras</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>COMUNICADOS RECENTES</Text>
         <TouchableOpacity>
-          <Text style={styles.seeAll}>Ver Todos</Text>
+          <Text style={styles.seeAllText}>Ver Todos</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.announcementCard}>
-        <View style={styles.activeBar} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.announcementTitle}>Alteração de Pauta</Text>
-          <Text style={styles.announcementDesc} numberOfLines={1}>
-            Adicionada a obra O Guarani para o próximo...
-          </Text>
-        </View>
-        <Text style={styles.timeText}>30 min</Text>
+      <View style={styles.announcementList}>
+        <TouchableOpacity style={styles.noticeCard}>
+            <View style={[styles.noticeIndicator, { backgroundColor: '#D48C70' }]} />
+            <View style={styles.noticeContent}>
+                <Text style={styles.noticeTitle}>Alteração de Pauta</Text>
+                <Text style={styles.noticePreview} numberOfLines={1}>
+                    Adicionada a obra O Guarani para o próximo ensaio.
+                </Text>
+            </View>
+            <Text style={styles.noticeTime}>30 min</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.noticeCard}>
+            <View style={[styles.noticeIndicator, { backgroundColor: '#EF4444' }]} />
+            <View style={styles.noticeContent}>
+                <Text style={styles.noticeTitle}>Cancelamento</Text>
+                <Text style={styles.noticePreview} numberOfLines={1}>
+                    Ensaio de sopros cancelado.
+                </Text>
+            </View>
+            <Text style={styles.noticeTime}>Há 2h</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.announcementCard}>
-        <View style={[styles.activeBar, { backgroundColor: Colors.dark.danger }]} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.announcementTitle}>Ensaio Cancelado</Text>
-          <Text style={styles.announcementDesc} numberOfLines={1}>
-            O ensaio de naipe de hoje foi suspenso devido...
-          </Text>
-        </View>
-        <Text style={styles.timeText}>2h</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>ADICIONADOS RECENTEMENTE</Text>
+      </View>
+
+      <View style={styles.recentList}>
+        {[1, 2, 3].map((i) => (
+            <TouchableOpacity key={i} style={styles.recentItem}>
+                <View style={styles.recentLeft}>
+                    <View style={styles.playIconContainer}>
+                        <PlayCircle size={20} color="#9CA3AF" />
+                    </View>
+                    <View>
+                        <Text style={styles.recentTitle}>Concerto para Violino</Text>
+                        <Text style={styles.recentSubtitle}>Tchaikovsky</Text>
+                    </View>
+                </View>
+                <ChevronRight size={16} color="#4B5563" />
+            </TouchableOpacity>
+        ))}
       </View>
 
     </ScrollView>
@@ -95,74 +172,90 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-    padding: 24,
+  container: { 
+    flex: 1, 
+    backgroundColor: '#0B0F19',
+    paddingHorizontal: 24 
   },
   header: {
+    marginTop: 60,
+    marginBottom: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 30,
   },
-  greeting: {
-    color: Colors.dark.textSecondary,
+  welcomeLabel: {
+    color: '#9CA3AF',
     fontSize: 14,
+    marginBottom: 4,
+    fontFamily: 'System',
   },
   userName: {
-    color: Colors.dark.text,
-    fontSize: 28,
+    color: '#FFFFFF',
+    fontSize: 30,
     fontWeight: 'bold',
+    fontFamily: 'System',
   },
-  avatarButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#2A2A2A',
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    padding: 2,
+    borderColor: '#D48C70',
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.dark.primary,
   },
-
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#151A26',
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   heroCard: {
-    backgroundColor: '#131620',
+    backgroundColor: '#151A26',
     borderRadius: 24,
     padding: 24,
-    marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#2A303C',
-    overflow: 'hidden',
-    position: 'relative',
+    borderColor: 'rgba(255,255,255,0.05)',
+    marginBottom: 24,
   },
   heroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    alignItems: 'flex-start',
+    marginBottom: 24,
   },
-  tag: {
-    backgroundColor: 'rgba(212, 140, 112, 0.1)', 
+  badge: {
+    backgroundColor: 'rgba(212, 140, 112, 0.2)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 100,
     borderWidth: 1,
-    borderColor: 'rgba(212, 140, 112, 0.3)',
+    borderColor: 'rgba(212, 140, 112, 0.2)',
   },
-  tagText: {
-    color: Colors.dark.primary,
+  badgeText: {
+    color: '#D48C70',
     fontSize: 10,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
-  eventTitle: {
-    color: '#FFF',
+  heroTitle: {
+    color: '#FFFFFF',
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  eventSubtitle: {
-    color: Colors.dark.textSecondary,
+  heroSubtitle: {
+    color: '#9CA3AF',
     fontSize: 14,
     marginBottom: 24,
   },
@@ -170,48 +263,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  infoBadge: {
+  heroInfoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 12,
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.2)',
     paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 8,
-    gap: 6,
   },
-  infoText: {
-    color: '#DDD',
+  heroInfoText: {
+    color: '#D1D5DB',
     fontSize: 12,
+    fontWeight: '500',
   },
-
-  statsGrid: {
+  statsContainer: {
     flexDirection: 'row',
     gap: 16,
-    marginBottom: 30,
+    marginBottom: 32,
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.dark.card,
-    padding: 16,
+    backgroundColor: '#151A26',
     borderRadius: 16,
+    padding: 20,
     borderWidth: 1,
-    borderColor: '#2A303C',
+    borderColor: 'rgba(255,255,255,0.05)',
+    gap: 12,
   },
-  iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
   statValue: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontSize: 24,
     fontWeight: 'bold',
   },
   statLabel: {
-    color: Colors.dark.textSecondary,
+    color: '#6B7280',
     fontSize: 12,
   },
   sectionHeader: {
@@ -221,47 +314,87 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    color: '#666',
+    color: '#9CA3AF',
     fontSize: 12,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  seeAll: {
-    color: Colors.dark.primary,
+  seeAllText: {
+    color: '#D48C70',
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
-  announcementCard: {
+  announcementList: {
+    gap: 12,
+    marginBottom: 32,
+  },
+  noticeCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.dark.card,
-    padding: 16,
+    backgroundColor: '#151A26',
     borderRadius: 16,
-    marginBottom: 12,
+    padding: 16,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2A303C',
+    borderColor: 'rgba(255,255,255,0.05)',
+    gap: 16,
   },
-  activeBar: {
+  noticeIndicator: {
     width: 4,
-    height: 30,
-    backgroundColor: Colors.dark.primary,
+    height: 40,
     borderRadius: 2,
-    marginRight: 16,
   },
-  announcementTitle: {
-    color: '#FFF',
+  noticeContent: {
+    flex: 1,
+  },
+  noticeTitle: {
+    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 2,
   },
-  announcementDesc: {
-    color: Colors.dark.textSecondary,
+  noticePreview: {
+    color: '#6B7280',
     fontSize: 12,
   },
-  timeText: {
-    color: '#555',
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginLeft: 8,
+  noticeTime: {
+    color: '#4B5563',
+    fontSize: 12,
+    fontWeight: '500',
   },
+  recentList: {
+      gap: 12,
+  },
+  recentItem: {
+      backgroundColor: '#151A26',
+      borderRadius: 16,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.05)',
+  },
+  recentLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+  },
+  playIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      backgroundColor: '#1E2433',
+      justifyContent: 'center',
+      alignItems: 'center',
+  },
+  recentTitle: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '500',
+  },
+  recentSubtitle: {
+      color: '#6B7280',
+      fontSize: 12,
+  }
 });

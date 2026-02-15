@@ -82,14 +82,14 @@ export default function OnboardingScreen() {
           updated_at: new Date(),
         });
 
-      if (error) throw error;
+      if (error) throw error
 
-      router.replace('/(tabs)/index' as any);
+      router.replace('/(tabs)' as any)
 
     } catch (error: any) {
-      Alert.alert("Erro ao Salvar", error.message);
+      Alert.alert("Erro ao Salvar", error.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
