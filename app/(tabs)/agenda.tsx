@@ -1,140 +1,187 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  FlatList 
+  View, Text, StyleSheet, FlatList, ActivityIndicator, StatusBar, RefreshControl, TouchableOpacity
 } from 'react-native';
-import { Colors } from '../../constants/Colors';
-import { MapPin, Clock, Filter } from 'lucide-react-native';
-
-const DAYS = [
-  { day: '10', month: 'NOV', week: 'Seg' },
-  { day: '11', month: 'NOV', week: 'Ter' },
-  { day: '12', month: 'NOV', week: 'Qua' },
-  { day: '13', month: 'NOV', week: 'Qui' },
-  { day: '14', month: 'NOV', week: 'Sex' },
-  { day: '15', month: 'NOV', week: 'Sáb' },
-  { day: '16', month: 'NOV', week: 'Dom' },
-];
-
-const EVENTS = [
-  {
-    id: '1',
-    type: 'ENSAIO',
-    title: 'Sinfonia No. 5',
-    composer: 'Beethoven',
-    time: '19:00',
-    location: 'Teatro CEFEC',
-    isNext: true,
-  },
-  {
-    id: '2',
-    type: 'CONCERTO',
-    title: 'Concerto de Primavera',
-    composer: 'Vivaldi',
-    time: '20:00',
-    location: 'Igreja Matriz',
-    isNext: false,
-  },
-  {
-    id: '3',
-    type: 'ENSAIO',
-    title: 'Ensaio de Naipe',
-    composer: 'Cordas',
-    time: '14:00',
-    location: 'Sala 3',
-    isNext: false,
-  }
-];
+import { agendaService, Evento } from '../../services/agenda.service';
+import { MapPin, Clock, CheckCircle, Filter } from 'lucide-react-native';
 
 export default function AgendaScreen() {
-  const [selectedDay, setSelectedDay] = useState('12');
+  const [loading, setLoading] = useState(true);
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [eventosFiltrados, setEventosFiltrados] = useState<Evento[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const [filtro, setFiltro] = useState<'todos' | 'ensaio' | 'concerto' | 'apresentacao'>('todos');
+  const [presencas, setPresencas] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    carregarAgenda();
+  }, []);
+
+  useEffect(() => {
+    if (filtro === 'todos') {
+      setEventosFiltrados(eventos);
+    } else {
+      setEventosFiltrados(eventos.filter(e => e.type === filtro));
+    }
+  }, [filtro, eventos]);
+
+  async function carregarAgenda() {
+    const dados = await agendaService.getProximosEventos();
+    setEventos(dados);
+    setLoading(false);
+    setRefreshing(false);
+  }
+
+  const togglePresenca = (id: string) => {
+    setPresencas(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const formatarData = (isoString: string) => {
+    const data = new Date(isoString);
+    const dia = data.getDate().toString().padStart(2, '0');
+    const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    const mes = meses[data.getMonth()];
+    const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const diaSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][data.getDay()];
+    return { dia, mes, hora, diaSemana };
+  };
+
+  const FilterChip = ({ label, type }: { label: string, type: typeof filtro }) => (
+    <TouchableOpacity 
+      style={[styles.chip, filtro === type && styles.chipActive]} 
+      onPress={() => setFiltro(type)}
+    >
+      <Text style={[styles.chipText, filtro === type && styles.chipTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderItem = ({ item, index }: { item: Evento, index: number }) => {
+    const { dia, mes, hora, diaSemana } = formatarData(item.date);
+    const confirmado = presencas[item.id];
+    const isLast = index === eventosFiltrados.length - 1;
+
+    const isConcerto = item.type === 'concerto';
+    const isApresentacao = item.type === 'apresentacao';
+
+    let typeColor = '#666';
+    let typeLabel = 'ENSAIO';
+
+    if (isConcerto) {
+      typeColor = '#D48C70';
+      typeLabel = '♫ CONCERTO';
+    } else if (isApresentacao) {
+      typeColor = '#A855F7';
+      typeLabel = '★ APRESENTAÇÃO';
+    }
+
+    return (
+      <View style={styles.timelineRow}>
+        <View style={styles.leftCol}>
+          <Text style={styles.dateDay}>{dia}</Text>
+          <Text style={styles.dateMonth}>{mes}</Text>
+        </View>
+
+        <View style={styles.timelineCol}>
+
+          <View style={[
+            styles.dot, 
+            isConcerto && styles.dotConcerto,
+            isApresentacao && styles.dotApresentacao
+          ]} />
+          {!isLast && <View style={styles.line} />}
+        </View>
+
+        <View style={styles.rightCol}>
+          <View style={[
+            styles.card,
+            isConcerto && styles.cardConcerto,
+            isApresentacao && styles.cardApresentacao
+          ]}>
+            <View style={styles.cardHeader}>
+              <Text style={[styles.typeText, { color: typeColor }]}>
+                {typeLabel} • {diaSemana}
+              </Text>
+              {confirmado && <CheckCircle size={14} color="#10B981" />}
+            </View>
+
+            <Text style={styles.title}>{item.title}</Text>
+
+            <View style={styles.detailsRow}>
+              <View style={styles.infoTag}>
+                <Clock size={12} color="#9CA3AF" />
+                <Text style={styles.infoText}>{hora}</Text>
+              </View>
+              <View style={styles.infoTag}>
+                <MapPin size={12} color="#9CA3AF" />
+                <Text style={styles.infoText}>{item.location}</Text>
+              </View>
+            </View>
+
+            {item.description && (
+              <Text style={styles.description}>{item.description}</Text>
+            )}
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity 
+                style={[styles.checkInButton, confirmado && styles.checkInActive]}
+                onPress={() => togglePresenca(item.id)}
+              >
+                <Text style={[styles.checkInText, confirmado && { color: '#FFF' }]}>
+                  {confirmado ? 'Presença Confirmada' : 'Confirmar Presença'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
       
-
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Agenda</Text>
-        <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color={Colors.dark.textSecondary} />
-        </TouchableOpacity>
+        <Text style={styles.pageTitle}>Agenda</Text>
+        <Text style={styles.pageSubtitle}>Próximos eventos da orquestra</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <View style={{height: 50}}>
+        <FlatList 
+          horizontal
+          data={['todos', 'ensaio', 'apresentacao', 'concerto']}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => {
+            const labels: any = { todos: 'Todos', ensaio: 'Ensaios', apresentacao: 'Apresentações', concerto: 'Concertos' };
+            return <FilterChip label={labels[item]} type={item as any} />;
+          }}
+        />
+      </View>
 
-        <View style={styles.calendarContainer}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.calendarScroll}
-          >
-            {DAYS.map((item, index) => {
-              const isSelected = item.day === selectedDay;
-              return (
-                <TouchableOpacity 
-                  key={index} 
-                  onPress={() => setSelectedDay(item.day)}
-                  style={[
-                    styles.dateCard,
-                    isSelected && styles.dateCardActive
-                  ]}
-                >
-                  <Text style={[styles.monthText, isSelected && styles.textActive]}>
-                    {item.month}
-                  </Text>
-                  <Text style={[styles.dayText, isSelected && styles.textActive]}>
-                    {item.day}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        <View style={styles.timelineContainer}>
-          {EVENTS.map((event, index) => {
-            const isLast = index === EVENTS.length - 1;
-            const isConcert = event.type === 'CONCERTO';
-
-            return (
-              <View key={event.id} style={styles.timelineItem}>
-
-                <View style={styles.timelineLeft}>
-                  <View style={[
-                    styles.dot, 
-                    isConcert ? styles.dotConcert : styles.dotRehearsal 
-                  ]} />
-                  {!isLast && <View style={styles.line} />}
-                </View>
-
-                <View style={styles.cardContainer}>
-                  <View style={styles.eventCard}>
-                    <View style={styles.cardHeader}>
-                      <Text style={styles.eventType}>{event.type}</Text>
-                      <Text style={styles.eventTime}>{event.time}</Text>
-                    </View>
-                    
-                    <Text style={styles.eventTitle}>{event.title}</Text>
-                    <Text style={styles.composer}>{event.composer}</Text>
-                    
-                    <View style={styles.locationRow}>
-                      <MapPin size={14} color="#666" />
-                      <Text style={styles.locationText}>{event.location}</Text>
-                    </View>
-                  </View>
-                </View>
-
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      {loading ? (
+        <ActivityIndicator size="large" color="#D48C70" style={{marginTop: 50}} />
+      ) : (
+        <FlatList
+          data={eventosFiltrados}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20, paddingTop: 10 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); carregarAgenda(); }} tintColor="#D48C70" />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Filter size={48} color="#333" />
+              <Text style={styles.emptyText}>Nenhum evento encontrado.</Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -142,151 +189,136 @@ export default function AgendaScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.dark.background,
-    paddingTop: 60,
+    backgroundColor: '#0B0F19',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    marginTop: 60,
+    marginBottom: 20,
+    paddingHorizontal: 20,
   },
-  headerTitle: {
-    fontSize: 32,
+  pageTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFF',
   },
-  filterButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.dark.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2A303C',
-  },
-  calendarContainer: {
-    marginBottom: 30,
-  },
-  calendarScroll: {
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  dateCard: {
-    width: 60,
-    height: 80,
-    borderRadius: 16,
-    backgroundColor: Colors.dark.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2A303C',
-  },
-  dateCardActive: {
-    backgroundColor: Colors.dark.primary,
-    borderColor: Colors.dark.primary,
-    transform: [{ scale: 1.05 }],
-    shadowColor: Colors.dark.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  monthText: {
-    fontSize: 10,
+  pageSubtitle: {
+    fontSize: 14,
     color: '#666',
-    fontWeight: 'bold',
-    marginBottom: 4,
-    textTransform: 'uppercase',
+    marginTop: 4,
   },
-  dayText: {
-    fontSize: 20,
-    color: '#FFF',
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#151A26',
+    borderWidth: 1,
+    borderColor: '#333',
+    height: 36,
+  },
+  chipActive: {
+    backgroundColor: 'rgba(212, 140, 112, 0.2)',
+    borderColor: '#D48C70',
+  },
+  chipText: {
+    color: '#666',
+    fontSize: 12,
     fontWeight: 'bold',
   },
-  textActive: {
-    color: '#FFF',
+  chipTextActive: {
+    color: '#D48C70',
   },
 
-  timelineContainer: {
-    paddingHorizontal: 24,
-  },
-  timelineItem: {
+  // TIMELINE
+  timelineRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 0, 
   },
-  timelineLeft: {
+  leftCol: {
+    width: 50,
     alignItems: 'center',
-    width: 24,
-    marginRight: 16,
+    paddingTop: 10,
+  },
+  dateDay: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
+  dateMonth: { fontSize: 12, color: '#666', fontWeight: 'bold', textTransform: 'uppercase' },
+  
+  timelineCol: {
+    width: 20,
+    alignItems: 'center',
+    marginRight: 10,
   },
   dot: {
     width: 12,
     height: 12,
     borderRadius: 6,
+    backgroundColor: '#333',
+    marginTop: 18, 
     borderWidth: 2,
-    borderColor: Colors.dark.background,
+    borderColor: '#0B0F19',
     zIndex: 2,
-    marginTop: 24,
   },
-  dotRehearsal: {
-    backgroundColor: Colors.dark.primary,
+  dotConcerto: {
+    backgroundColor: '#D48C70',
+    width: 14, height: 14, borderRadius: 7,
   },
-  dotConcert: {
+  dotApresentacao: {
     backgroundColor: '#A855F7',
+    width: 14, height: 14, borderRadius: 7,
   },
   line: {
     width: 2,
     flex: 1,
-    backgroundColor: '#2A303C',
-    marginVertical: -4,
+    backgroundColor: '#1F2937',
+    marginTop: -2,
+    marginBottom: -18,
   },
-  cardContainer: {
+  rightCol: {
     flex: 1,
-    paddingBottom: 24,
+    paddingBottom: 24, 
   },
-  eventCard: {
-    backgroundColor: Colors.dark.card,
-    borderRadius: 20,
-    padding: 20,
+
+  card: {
+    backgroundColor: '#151A26',
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#2A303C',
+    borderColor: 'rgba(255,255,255,0.05)',
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+  cardConcerto: {
+    borderColor: 'rgba(212, 140, 112, 0.4)',
+    backgroundColor: 'rgba(212, 140, 112, 0.05)',
   },
-  eventType: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#666',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  cardApresentacao: {
+    borderColor: 'rgba(168, 85, 247, 0.4)',
+    backgroundColor: 'rgba(168, 85, 247, 0.05)',
   },
-  eventTime: {
-    fontSize: 12,
-    color: '#888',
+  
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  typeText: { fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
+  title: { fontSize: 18, fontWeight: 'bold', color: '#FFF', marginBottom: 8 },
+  detailsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  infoTag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  infoText: { color: '#9CA3AF', fontSize: 12 },
+  description: { color: '#555', fontSize: 12, fontStyle: 'italic', marginBottom: 12, lineHeight: 18 },
+  
+  actionRow: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    paddingTop: 12,
+    alignItems: 'flex-start',
   },
-  eventTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginBottom: 4,
+  checkInButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#0B0F19',
+    borderWidth: 1,
+    borderColor: '#333',
   },
-  composer: {
-    fontSize: 14,
-    color: Colors.dark.textSecondary,
-    marginBottom: 16,
+  checkInActive: {
+    backgroundColor: '#10B981', 
+    borderColor: '#10B981',
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#666',
-  },
+  checkInText: { fontSize: 12, color: '#888', fontWeight: 'bold' },
+  emptyState: { alignItems: 'center', marginTop: 60, gap: 16 },
+  emptyText: { color: '#666', fontSize: 16 }
 });

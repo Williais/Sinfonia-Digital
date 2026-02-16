@@ -1,94 +1,87 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Colors } from '../../constants/Colors';
-import { Bell, AlertCircle, Info, ChevronRight } from 'lucide-react-native';
-
-const NOTICES = [
-  {
-    id: 1,
-    title: 'Ensaio Cancelado',
-    date: 'Há 2 horas',
-    content: 'O ensaio de naipe de hoje foi suspenso devido à falta de energia no teatro.',
-    type: 'URGENT',
-    author: 'Maestro Sadraque'
-  },
-  {
-    id: 2,
-    title: 'Alteração de Pauta',
-    date: 'Ontem, 14:00',
-    content: 'Adicionada a obra "O Guarani" para o próximo concerto. Favor imprimir as partituras.',
-    type: 'WARNING',
-    author: 'Willian'
-  },
-  {
-    id: 3,
-    title: 'Novo Fardamento',
-    date: '10 Nov',
-    content: 'As medidas para o novo fardamento serão tiradas no próximo ensaio geral.',
-    type: 'INFO',
-    author: 'Coordenação'
-  }
-];
+import React, { useEffect, useState } from 'react';
+import { 
+  View, Text, StyleSheet, FlatList, ActivityIndicator, StatusBar, RefreshControl 
+} from 'react-native';
+import { agendaService, Aviso } from '../../services/agenda.service';
+import { Megaphone, AlertTriangle, Info, Calendar } from 'lucide-react-native';
 
 export default function MuralScreen() {
+  const [loading, setLoading] = useState(true);
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    carregarMural();
+  }, []);
+
+  async function carregarMural() {
+    const dados = await agendaService.getAvisos();
+    setAvisos(dados);
+    setLoading(false);
+    setRefreshing(false);
+  }
+
+  const formatarDataRelativa = (isoString: string) => {
+    const data = new Date(isoString);
+    const hoje = new Date();
+    const diffTime = Math.abs(hoje.getTime() - data.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+    if (diffDays === 0) return 'Hoje';
+    if (diffDays === 1) return 'Ontem';
+    return `Há ${diffDays} dias`;
+  };
+
+  const renderItem = ({ item }: { item: Aviso }) => {
+    const isUrgent = item.priority === 'alta';
+    
+    return (
+      <View style={[styles.card, isUrgent && styles.cardUrgent]}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.badge, isUrgent ? styles.badgeUrgent : styles.badgeNormal]}>
+            {isUrgent ? <AlertTriangle size={12} color="#FFF" /> : <Info size={12} color="#FFF" />}
+            <Text style={styles.badgeText}>
+              {isUrgent ? 'IMPORTANTE' : 'INFORMATIVO'}
+            </Text>
+          </View>
+          <Text style={styles.dateText}>{formatarDataRelativa(item.created_at)}</Text>
+        </View>
+
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.content}>{item.content}</Text>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
+      
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mural de Avisos</Text>
-        <TouchableOpacity style={styles.bellButton}>
-          <Bell size={20} color={Colors.dark.textSecondary} />
-          <View style={styles.badge} />
-        </TouchableOpacity>
+        <Text style={styles.pageTitle}>Mural</Text>
+        <Text style={styles.pageSubtitle}>Comunicados da diretoria</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {NOTICES.map((notice) => {
-
-          let borderColor = '#2A303C';
-          let icon = <Info size={20} color="#666" />;
-          let highlight = 'transparent';
-
-          if (notice.type === 'URGENT') {
-            borderColor = 'rgba(239, 68, 68, 0.5)';
-            icon = <AlertCircle size={20} color="#EF4444" />;
-            highlight = '#EF4444';
-          } else if (notice.type === 'WARNING') {
-            borderColor = 'rgba(212, 140, 112, 0.5)';
-            icon = <AlertCircle size={20} color={Colors.dark.primary} />;
-            highlight = Colors.dark.primary;
+      {loading ? (
+        <ActivityIndicator size="large" color="#D48C70" style={{marginTop: 50}} />
+      ) : (
+        <FlatList
+          data={avisos}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); carregarMural(); }} tintColor="#D48C70" />
           }
-
-          return (
-            <TouchableOpacity key={notice.id} style={[styles.card, { borderColor }]}>
-              {notice.type !== 'INFO' && (
-                <View style={[styles.highlightBar, { backgroundColor: highlight }]} />
-              )}
-              
-              <View style={styles.cardContent}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.titleRow}>
-                    {icon}
-                    <Text style={styles.cardTitle}>{notice.title}</Text>
-                  </View>
-                  <Text style={styles.date}>{notice.date}</Text>
-                </View>
-                
-                <Text style={styles.textContent}>{notice.content}</Text>
-                
-                <View style={styles.cardFooter}>
-                  <Text style={styles.author}>Por: {notice.author}</Text>
-                  <View style={styles.readMore}>
-                    <Text style={styles.readMoreText}>Ler completo</Text>
-                    <ChevronRight size={14} color={Colors.dark.textSecondary} />
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-        
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Megaphone size={48} color="#333" />
+              <Text style={styles.emptyText}>Nenhum comunicado recente.</Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -96,103 +89,87 @@ export default function MuralScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.dark.background,
-    paddingTop: 60,
-    paddingHorizontal: 24,
+    backgroundColor: '#0B0F19',
+    paddingHorizontal: 20,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginTop: 60,
     marginBottom: 24,
   },
-  headerTitle: {
-    fontSize: 32,
+  pageTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFF',
   },
-  bellButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.dark.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2A303C',
+  pageSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
   },
-  badge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.dark.primary,
-  },
+  
   card: {
-    backgroundColor: Colors.dark.card,
+    backgroundColor: '#151A26',
     borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    overflow: 'hidden',
-    flexDirection: 'row',
+    borderColor: 'rgba(255,255,255,0.05)',
   },
-  highlightBar: {
-    width: 4,
-    height: '100%',
+  cardUrgent: {
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
-  cardContent: {
-    flex: 1,
-    padding: 16,
-  },
+  
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  titleRow: {
+  badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 6,
   },
-  cardTitle: {
+  badgeNormal: {
+    backgroundColor: '#1F2937',
+  },
+  badgeUrgent: {
+    backgroundColor: '#EF4444',
+  },
+  badgeText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 10,
     fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
-  date: {
+  dateText: {
     color: '#666',
     fontSize: 12,
   },
-  textContent: {
-    color: Colors.dark.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-    paddingTop: 12,
-  },
-  author: {
-    color: '#555',
-    fontSize: 12,
+  
+  title: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 8,
   },
-  readMore: {
-    flexDirection: 'row',
+  content: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    lineHeight: 22,
+  },
+
+  emptyState: {
     alignItems: 'center',
-    gap: 4,
+    marginTop: 60,
+    gap: 16,
   },
-  readMoreText: {
-    color: Colors.dark.textSecondary,
-    fontSize: 12,
-  },
+  emptyText: {
+    color: '#666',
+    fontSize: 16,
+  }
 });
