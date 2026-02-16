@@ -17,16 +17,16 @@ export default function AcervoDashboard() {
 
   async function loadData() {
     const todas = await acervoService.getAllMusicas();
-    // Pega as 5 últimas (ou primeiras, dependendo da ordem do banco)
+
     setRecentes(todas.slice(0, 5));
     setLoading(false);
   }
 
-  // Componente de Card
+
   const CategoryCard = ({ title, count, color, icon: Icon, filter }: any) => (
     <TouchableOpacity 
       style={[styles.catCard, { backgroundColor: color }]}
-      onPress={() => router.push({ pathname: '/acervo/lista', params: { category: filter } })} // <--- MUDOU AQUI
+      onPress={() => router.push({ pathname: '/acervo/lista', params: { category: filter } })}
     >
       <View style={styles.catIconBox}>
         <Icon size={24} color="#FFF" />
@@ -45,18 +45,17 @@ export default function AcervoDashboard() {
       <View style={styles.header}>
         <Text style={styles.pageTitle}>Acervo Digital</Text>
         <TouchableOpacity style={styles.searchBar} onPress={() => router.push({ pathname: '/acervo/lista', params: { category: 'all' } })}>
-           <Text style={styles.searchText}>Buscar obras, compositores...</Text>
+           <Text style={styles.searchText}>Buscar por nome...</Text>
         </TouchableOpacity>
       </View>
 
-      {/* GRID */}
       <View style={styles.grid}>
         <CategoryCard 
           title="Cordas" 
           count="Violinos, Cellos..." 
           color="rgba(59, 130, 246, 0.15)"
           icon={Music} 
-          filter="Cordas" // <--- Passa o nome para o título
+          filter="Cordas"
         />
         <CategoryCard 
           title="Sopros" 
@@ -81,7 +80,7 @@ export default function AcervoDashboard() {
         />
       </View>
 
-      {/* RECENTES */}
+  
       <Text style={styles.sectionTitle}>ADICIONADOS RECENTEMENTE</Text>
       
       {loading ? (

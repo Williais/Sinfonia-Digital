@@ -2,32 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ActivityIndicator, StatusBar
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router'; // <--- useLocalSearchParams é importante
+import { useRouter, useLocalSearchParams } from 'expo-router'; // <--- 
 import { acervoService, Musica } from '../../../services/acervo.service';
 import { Search, Music, FileText, PlayCircle, ChevronLeft } from 'lucide-react-native';
 
 export default function AcervoScreen() {
   const router = useRouter();
-  const { category } = useLocalSearchParams(); // Recebe: "Cordas", "Sopros", etc.
+  const { category } = useLocalSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [musicas, setMusicas] = useState<Musica[]>([]);
   const [filteredMusicas, setFilteredMusicas] = useState<Musica[]>([]);
   const [searchText, setSearchText] = useState('');
 
-  // Título da página muda conforme o filtro
+
   const pageTitle = category && category !== 'all' ? category.toString() : 'Acervo Completo';
 
   useEffect(() => {
     carregarAcervo();
-  }, [category]); // Recarrega se a categoria mudar
-
+  }, [category]); 
   async function carregarAcervo() {
     setLoading(true);
     const dados = await acervoService.getAllMusicas();
     setMusicas(dados);
-    
-    // APLICAR O FILTRO DE CATEGORIA AQUI
+
     if (category && category !== 'all') {
       const cat = category.toString().toLowerCase();
       const filtradosPorCat = dados.filter(m => verificarCategoria(m, cat));
@@ -39,13 +37,10 @@ export default function AcervoScreen() {
     setLoading(false);
   }
 
-  // Lógica inteligente: Verifica se a música tem instrumentos daquela família
   function verificarCategoria(musica: Musica, categoria: string): boolean {
-    // Se não tem partituras, não entra na categoria específica
+
     if (!musica.partiturasPaths) return false;
 
-    // Pega a lista de instrumentos cadastrados (chaves do objeto)
-    // Ex: ["Violino I", "Cello", "Flauta"]
     const instrumentos = Object.keys(musica.partiturasPaths).map(i => i.toLowerCase());
     const titulo = musica.title.toLowerCase();
 
@@ -64,8 +59,7 @@ export default function AcervoScreen() {
 
   function handleSearch(text: string) {
     setSearchText(text);
-    // Filtra sobre a lista original COMPLETA (ignorando categoria para busca global)
-    // OU filtra sobre a lista da categoria atual. Aqui faremos sobre a categoria atual:
+
     const baseList = (category && category !== 'all') 
       ? musicas.filter(m => verificarCategoria(m, category.toString().toLowerCase())) 
       : musicas;
@@ -114,12 +108,12 @@ export default function AcervoScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
       
       <View style={styles.header}>
-        {/* Botão Voltar (aparece se tiver filtro) */}
+
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
            <ChevronLeft size={24} color="#FFF" />
            <Text style={styles.pageTitle}>{pageTitle}</Text>
         </TouchableOpacity>
-        <Text style={styles.pageSubtitle}>Biblioteca da Orquestra Filarmônica</Text>
+        <Text style={styles.pageSubtitle}>Biblioteca da Orquestra Filarmônicado CEFEC</Text>
       </View>
 
       <View style={styles.searchContainer}>
@@ -167,7 +161,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
-    marginLeft: -8, // Ajuste para alinhar o ícone
+    marginLeft: -8,
   },
   pageTitle: {
     fontSize: 28,
