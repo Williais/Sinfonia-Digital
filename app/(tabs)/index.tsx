@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, StatusBar, RefreshControl, ActivityIndicator, Alert 
 } from 'react-native';
@@ -17,7 +17,7 @@ export default function HomeScreen() {
   const [proximosEventos, setProximosEventos] = useState<Evento[]>([]);
   const [avisoUrgente, setAvisoUrgente] = useState<Aviso | null>(null);
   const [musicaRecente, setMusicaRecente] = useState<Musica | null>(null);
-  const [stats, setStats] = useState({ partituras: 0, nivel: 1, xp: 150, frequencia: 98 });
+  const [stats, setStats] = useState({ partituras: 0, nivel: 1, xp: 0, frequencia: 0 });
 
   useFocusEffect(
     useCallback(() => {
@@ -33,10 +33,11 @@ export default function HomeScreen() {
       const perfil = await profileService.getUserProfile();
       setUser(perfil);
 
-      const [eventos, avisos, musicas] = await Promise.all([
+      const [eventos, avisos, musicas, estatisticas] = await Promise.all([
         agendaService.getProximosEventos(authUser.id),
         agendaService.getAvisos(),
-        acervoService.getAllMusicas()
+        acervoService.getAllMusicas(),
+        profileService.getUserStats(authUser.id)
       ]);
 
       setProximosEventos(eventos.slice(0, 2));
@@ -46,7 +47,15 @@ export default function HomeScreen() {
 
       if (musicas.length > 0) {
         setMusicaRecente(musicas[musicas.length - 1]);
-        setStats(prev => ({ ...prev, partituras: musicas.length }));
+      }
+
+      if (estatisticas) {
+        setStats({
+          partituras: musicas.length,
+          nivel: estatisticas.level || 1,
+          xp: estatisticas.xp || 0,
+          frequencia: estatisticas.frequencia || 0
+        });
       }
 
     } catch (e) {
@@ -68,6 +77,7 @@ export default function HomeScreen() {
 
     try {
       await agendaService.confirmarPresenca(evento.id, user.id, status);
+      carregarTudo(); 
     } catch (error) {
       Alert.alert("Erro", "Falha ao salvar presença.");
       carregarTudo();
