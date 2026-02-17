@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, ActivityIndicator, StatusBar, RefreshControl, TouchableOpacity
 } from 'react-native';
-import { agendaService, Evento } from '../../services/agenda.service';
+import { agendaService, Evento } from '../../../services/agenda.service';
 import { MapPin, Clock, CheckCircle, Filter } from 'lucide-react-native';
 
 export default function AgendaScreen() {

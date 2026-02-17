@@ -7,14 +7,12 @@ import { supabase } from '../../lib/supabase';
 import { agendaService, Evento, Aviso } from '../../services/agenda.service';
 import { acervoService, Musica } from '../../services/acervo.service';
 import { profileService } from '../../services/profile.service';
-import { Bell, Calendar, Music, ChevronRight, AlertTriangle, Trophy, MapPin, Clock, CheckCircle, XCircle, Activity } from 'lucide-react-native';
+import { Calendar, Music, ChevronRight, AlertTriangle, Trophy, MapPin, Clock, CheckCircle, XCircle, Activity } from 'lucide-react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Estados dos Dados
   const [user, setUser] = useState<any>(null);
   const [proximosEventos, setProximosEventos] = useState<Evento[]>([]);
   const [avisoUrgente, setAvisoUrgente] = useState<Aviso | null>(null);
@@ -52,7 +50,7 @@ export default function HomeScreen() {
       }
 
     } catch (e) {
-      console.log("Erro Home:", e);
+      console.log(e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -61,7 +59,7 @@ export default function HomeScreen() {
 
   async function handlePresenca(evento: Evento, status: 'confirmado' | 'ausente') {
     if (!user?.id) return;
-
+    
     const listaAtualizada = proximosEventos.map(e => {
       if (e.id === evento.id) return { ...e, my_status: status };
       return e;
@@ -95,15 +93,17 @@ export default function HomeScreen() {
     const hora = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     return (
-      <View style={styles.heroCard}>
-
+      <TouchableOpacity 
+        style={styles.heroCard} 
+        onPress={() => router.push(`/agenda/${evento.id}`)}
+        activeOpacity={0.9}
+      >
         <View style={styles.heroHeader}>
           <View style={styles.dateBadge}>
             <Text style={styles.dateBadgeText}>{getDataBadge(evento.date)}</Text>
           </View>
           <Text style={{color: '#666', fontWeight: 'bold', fontSize: 20}}>⋮</Text> 
         </View>
-
 
         <Text style={styles.heroTitle}>{evento.title}</Text>
         <Text style={styles.heroSubtitle}>
@@ -138,7 +138,7 @@ export default function HomeScreen() {
             <Text style={[styles.actionBtnText, evento.my_status === 'ausente' && {color: '#FFF'}]}>Não vou</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -150,7 +150,10 @@ export default function HomeScreen() {
     return (
       <View style={{marginTop: 16}}>
         <Text style={styles.sectionLabelSmall}>EM BREVE</Text>
-        <TouchableOpacity style={styles.secondEventCard} onPress={() => router.push('/(tabs)/agenda')}>
+        <TouchableOpacity 
+          style={styles.secondEventCard} 
+          onPress={() => router.push(`/agenda/${evento.id}`)}
+        >
           <View style={styles.secondDateBox}>
             <Text style={styles.secondDateDay}>{dia}</Text>
             <Text style={styles.secondDateMonth}>{mes}</Text>
@@ -173,7 +176,6 @@ export default function HomeScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); carregarTudo(); }} tintColor="#D48C70"/>}
     >
       <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
-
 
       <View style={styles.header}>
         <View>
@@ -264,19 +266,16 @@ const styles = StyleSheet.create({
   roleBadge: { backgroundColor: 'rgba(212, 140, 112, 0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   roleText: { color: '#D48C70', fontSize: 10, fontWeight: 'bold' },
   avatar: { width: 48, height: 48, borderRadius: 16, borderWidth: 1, borderColor: '#333' },
-
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   statCard: { flex: 1, backgroundColor: '#151A26', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   iconBg: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   statValue: { fontSize: 18, fontWeight: 'bold', color: '#FFF' },
   statLabel: { fontSize: 11, color: '#666' },
-
   urgentNoticeBox: { backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: 16, borderRadius: 16, marginBottom: 24, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.3)' },
   urgentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   urgentTitle: { color: '#EF4444', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
   urgentSubject: { color: '#FFF', fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
   urgentContent: { color: '#FECACA', fontSize: 13, lineHeight: 20 },
-
   heroCard: { backgroundColor: '#151A26', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   heroHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   dateBadge: { borderWidth: 1, borderColor: '#D48C70', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
@@ -286,14 +285,12 @@ const styles = StyleSheet.create({
   heroInfoRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   heroPill: { backgroundColor: '#0B0F19', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8 },
   heroPillText: { color: '#CCC', fontSize: 12 },
-  
   actionButtonsContainer: { flexDirection: 'row', gap: 10 },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
   btnOutline: { borderColor: '#333', backgroundColor: 'transparent' },
   btnConfirmado: { backgroundColor: '#10B981', borderColor: '#10B981' },
   btnAusente: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
   actionBtnText: { color: '#888', fontWeight: 'bold', fontSize: 12 },
-
   sectionLabelSmall: { color: '#666', fontSize: 10, fontWeight: 'bold', letterSpacing: 1, marginBottom: 8 },
   secondEventCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#151A26', borderRadius: 12, padding: 12, gap: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   secondDateBox: { alignItems: 'center', justifyContent: 'center', width: 40, backgroundColor: '#0B0F19', borderRadius: 8, paddingVertical: 6 },
@@ -301,7 +298,6 @@ const styles = StyleSheet.create({
   secondDateMonth: { fontSize: 9, fontWeight: 'bold', color: '#666' },
   secondTitle: { fontSize: 14, fontWeight: 'bold', color: '#FFF' },
   secondSubtitle: { fontSize: 11, color: '#666' },
-
   sectionTitle: { color: '#666', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, marginBottom: 12, marginTop: 24 },
   musicCard: { backgroundColor: '#151A26', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   musicIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(212, 140, 112, 0.1)', justifyContent: 'center', alignItems: 'center' },

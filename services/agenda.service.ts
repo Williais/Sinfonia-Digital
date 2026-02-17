@@ -65,6 +65,31 @@ class AgendaService {
       .order('created_at', { ascending: false });
     return error ? [] : (data as Aviso[]);
   }
+
+  async getParticipantes(eventId: string) {
+    const { data, error } = await supabase
+      .from('event_attendance')
+      .select(`
+        status,
+        profiles:user_id (
+          id,
+          nickname,
+          instrument,
+          avatar_url
+        )
+      `)
+      .eq('event_id', eventId);
+
+    if (error) return [];
+    
+    return data.map((item: any) => ({
+      id: item.profiles.id,
+      name: item.profiles.nickname,
+      instrument: item.profiles.instrument || 'Outro',
+      avatar: item.profiles.avatar_url,
+      status: item.status
+    }));
+  }
 }
 
 export const agendaService = new AgendaService();
