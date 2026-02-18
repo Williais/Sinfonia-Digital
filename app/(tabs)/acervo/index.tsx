@@ -4,10 +4,10 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabase'; 
 import { acervoService, Musica } from '../../../services/acervo.service';
 import { profileService } from '../../../services/profile.service';
-import { Search, Music, BookOpen, ChevronRight, Plus, X, Save, FileAudio, FileText, Trash2 } from 'lucide-react-native';
+import { Search, Music, ChevronRight, Plus, X, Save, FileAudio, FileText, Trash2 } from 'lucide-react-native';
 
 export default function AcervoScreen() {
   const router = useRouter();
@@ -21,11 +21,12 @@ export default function AcervoScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
 
+
   const [novoTitulo, setNovoTitulo] = useState('');
   const [novoCompositor, setNovoCompositor] = useState('');
   const [novoArranjador, setNovoArranjador] = useState('');
   const [novaCategoria, setNovaCategoria] = useState<string>('popular');
-
+  
   const [audioFile, setAudioFile] = useState<any>(null);
   const [pdfFiles, setPdfFiles] = useState<any[]>([]);
 
@@ -41,12 +42,14 @@ export default function AcervoScreen() {
 
   async function carregarAcervo() {
     try {
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const profile = await profileService.getUserProfile();
       const isPowerUser = ['admin', 'maestro'].includes(profile.role) || profile.is_spalla;
       setCanCreate(isPowerUser);
+
 
       const dados = await acervoService.getAllMusicas();
       setMusicas(dados);
@@ -71,19 +74,19 @@ export default function AcervoScreen() {
   async function pickAudio() {
     try {
         const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true });
-        if (!result.canceled) setAudioFile(result.assets[0]);
-    } catch (e) { Alert.alert("Erro", "Não foi possível selecionar o áudio"); }
+        if (!result.canceled && result.assets) setAudioFile(result.assets[0]);
+    } catch (e) { Alert.alert("Erro", "Erro ao selecionar áudio"); }
   }
 
   async function pickPDFs() {
     try {
         const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', multiple: true, copyToCacheDirectory: true });
-        if (!result.canceled) setPdfFiles(prev => [...prev, ...result.assets]);
-    } catch (e) { Alert.alert("Erro", "Não foi possível selecionar os PDFs"); }
+        if (!result.canceled && result.assets) setPdfFiles(prev => [...prev, ...result.assets]);
+    } catch (e) { Alert.alert("Erro", "Erro ao selecionar PDFs"); }
   }
 
   async function handleCreateMusic() {
-    if (!novoTitulo || !novoCompositor) return Alert.alert("Erro", "Título e Compositor são obrigatórios.");
+    if (!novoTitulo || !novoCompositor) return Alert.alert("Erro", "Preencha Título e Compositor.");
 
     setSaving(true);
     try {
@@ -93,13 +96,13 @@ export default function AcervoScreen() {
         pdfFiles
       );
 
-      Alert.alert("Sucesso", "Música enviada para o acervo!");
+      Alert.alert("Sucesso", "Música adicionada!");
       setModalVisible(false);
       limparForm();
       carregarAcervo();
     } catch (e) {
       console.log(e);
-      Alert.alert("Erro", "Falha ao enviar arquivos. Verifique sua conexão.");
+      Alert.alert("Erro", "Falha no envio. Verifique se o Bucket 'arquivos' é público no Supabase do Acervo.");
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,5 @@
 import { supabaseAcervo } from "../lib/supabase-acervo";
-import * as FileSystem from 'expo-file-system';
-import { decode } from 'base64-arraybuffer';
+import { File } from 'expo-file-system';
 
 export interface Musica {
   id: number;
@@ -21,6 +20,7 @@ function slugify(text: string) {
     .replace(/\-\-+/g, '-')
     .replace(/^-+/, '').replace(/-+$/, '');
 }
+
 
 class AcervoService {
 
@@ -69,19 +69,31 @@ class AcervoService {
   }
 
   async getMusicaById(id: string) {
-      const musicas = await this.getAllMusicas();
-      return musicas.find(m => String(m.id) === String(id)) || null;
+    const musicas = await this.getAllMusicas();
+    return musicas.find(m => String(m.id) === String(id)) || null;
   }
 
   async uploadFileToStorage(uri: string, path: string, type: string) {
+    try {
+      const file = new File(uri);
+      const bytes = await file.bytes();
 
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    const { error } = await supabaseAcervo.storage.from('arquivos').upload(path, decode(base64), {
-        contentType: type,
-        upsert: true
-    });
-    if (error) throw error;
-    return path;
+      const { error } = await supabaseAcervo.storage
+        .from('arquivos')
+        .upload(path, bytes, {
+          contentType: type,
+          upsert: true
+        });
+
+      if (error) {
+        console.error("Erro detalhado do Supabase Storage:", error);
+        throw error;
+      }
+      return path;
+    } catch (error) {
+      console.error("Erro no upload:", error);
+      throw error;
+    }
   }
 
   async addMusica(
@@ -93,28 +105,23 @@ class AcervoService {
     let audioPath = null;
     let partiturasPaths: Record<string, string> = {};
 
-
     if (audioFile) {
-
-        const fileName = audioFile.name || `audio-${Date.now()}.mp3`;
-        const path = `audio/${Date.now()}_${slugify(fileName)}`;
-        
-        await this.uploadFileToStorage(audioFile.uri, path, 'audio/mpeg');
-        audioPath = path;
+      const fileName = audioFile.name || `audio-${Date.now()}.mp3`;
+      const path = `audio/${Date.now()}_${slugify(fileName)}`;
+      await this.uploadFileToStorage(audioFile.uri, path, 'audio/mpeg');
+      audioPath = path;
     }
 
     if (pdfFiles && pdfFiles.length > 0) {
-        for (const file of pdfFiles) {
-            const fileName = file.name || `partitura-${Date.now()}.pdf`;
+      for (const file of pdfFiles) {
+        const fileName = file.name || `partitura-${Date.now()}.pdf`;
+        const instrumento = fileName.replace(/\.pdf$/i, '').trim();
+        const path = `partituras/${sanitizedTitle}/${slugify(fileName)}`;
 
-            const instrumento = fileName.replace(/\.pdf$/i, '').trim(); 
-            const path = `partituras/${sanitizedTitle}/${slugify(fileName)}`;
-            
-            await this.uploadFileToStorage(file.uri, path, 'application/pdf');
-            partiturasPaths[instrumento] = path;
-        }
+        await this.uploadFileToStorage(file.uri, path, 'application/pdf');
+        partiturasPaths[instrumento] = path;
+      }
     }
-
 
     const { error } = await supabaseAcervo
       .from('musicas')
