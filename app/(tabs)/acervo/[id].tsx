@@ -1,11 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
+import React, { useEffect, useState, useCallback } from 'react';
+import { 
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StatusBar, Linking 
+} from 'react-native';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Slider from '@react-native-community/slider';
-import * as WebBrowser from 'expo-web-browser';
 import { acervoService, Musica } from '../../../services/acervo.service';
-import { playerService } from '../../../services/player.service';
-import { PlayCircle, PauseCircle, FileText, ChevronLeft, Download, AlertCircle } from 'lucide-react-native';
+import { playerService } from '../../../services/player.service'; // Seu serviço de player antigo
+import { profileService } from '../../../services/profile.service'; // Para checar admin
+import { PlayCircle, PauseCircle, FileText, ChevronLeft, Download, AlertCircle, Trash2, Music as MusicIcon } from 'lucide-react-native';
+import { supabase } from '../../../lib/supabase'; // Para deletar se necessário
 
 export default function MusicDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -14,15 +17,19 @@ export default function MusicDetailScreen() {
   const [musica, setMusica] = useState<Musica | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Estados do Player (Restaurados)
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0); 
   const [duration, setDuration] = useState(1); 
 
+  // Estado de Admin (Novo)
+  const [canEdit, setCanEdit] = useState(false);
+
   useEffect(() => {
     loadDetails();
-
   }, [id]);
 
+  // Parar música ao sair da tela
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -33,12 +40,24 @@ export default function MusicDetailScreen() {
   );
 
   async function loadDetails() {
-    const todas = await acervoService.getAllMusicas();
-    const encontrada = todas.find(m => m.id.toString() === id);
-    if (encontrada) setMusica(encontrada);
-    setLoading(false);
+    try {
+      // 1. Checar Permissão Admin
+      const profile = await profileService.getUserProfile();
+      const isPowerUser = ['admin', 'maestro'].includes(profile.role) || profile.is_spalla;
+      setCanEdit(isPowerUser);
+
+      // 2. Buscar Música (Usando o método otimizado ou o antigo, ambos funcionam)
+      const encontrada = await acervoService.getMusicaById(id as string);
+      if (encontrada) setMusica(encontrada);
+      
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoading(false);
+    }
   }
 
+  // --- LÓGICA DO PLAYER (RESTAURADA) ---
   async function handlePlayPause() {
     if (!musica?.audioUrl) return Alert.alert("Ops", "Sem áudio disponível.");
 
@@ -46,14 +65,12 @@ export default function MusicDetailScreen() {
        const playing = await playerService.togglePlay();
        setIsPlaying(playing);
     } else {
-
        await playerService.play(musica.audioUrl, (status: any) => {
          if (status.isLoaded) {
            setDuration(status.durationMillis || 1);
            setPosition(status.positionMillis);
            setIsPlaying(status.isPlaying);
            
-         
            if (status.didJustFinish) {
              setIsPlaying(false);
              setPosition(0);
@@ -70,8 +87,30 @@ export default function MusicDetailScreen() {
     return minutes + ":" + (Number(seconds) < 10 ? '0' : '') + seconds;
   };
 
-  async function openPdf(url: string) {
-    await WebBrowser.openBrowserAsync(url);
+  // --- LÓGICA DE ADMIN (NOVA) ---
+  async function handleDelete() {
+    Alert.alert(
+      "Excluir Música",
+      "Tem certeza? Isso removerá a música do acervo.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Excluir", 
+          style: "destructive", 
+          onPress: async () => {
+            // Lógica simples de delete (se não tiver no service, deleta direto aqui)
+            // Idealmente: await acervoService.deleteMusica(id);
+            const { error } = await supabase.from('musicas').delete().eq('id', id);
+            if (!error) {
+                router.back();
+                Alert.alert("Sucesso", "Música removida.");
+            } else {
+                Alert.alert("Erro", "Falha ao excluir.");
+            }
+          } 
+        }
+      ]
+    );
   }
 
   if (loading) return <View style={styles.center}><ActivityIndicator color="#D48C70" /></View>;
@@ -79,18 +118,30 @@ export default function MusicDetailScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <ChevronLeft size={24} color="#FFF" />
-        <Text style={styles.backText}>Voltar</Text>
-      </TouchableOpacity>
+      <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
+      
+      {/* HEADER COM DELETE */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ChevronLeft size={24} color="#FFF" />
+          <Text style={styles.backText}>Voltar</Text>
+        </TouchableOpacity>
 
+        {canEdit && (
+            <TouchableOpacity onPress={handleDelete}>
+                <Trash2 size={24} color="#EF4444" />
+            </TouchableOpacity>
+        )}
+      </View>
+
+      {/* PLAYER UI (ESTILO ANTIGO RESTAURADO) */}
       <View style={styles.playerSection}>
         <View style={styles.albumCover}>
            <Text style={styles.albumInitial}>{musica.title.charAt(0)}</Text>
         </View>
 
         <Text style={styles.title}>{musica.title}</Text>
-        <Text style={styles.arranger}>{musica.arranger}</Text>
+        <Text style={styles.arranger}>{musica.composer} {musica.arranger ? `• Arr: ${musica.arranger}` : ''}</Text>
 
         <View style={styles.progressContainer}>
             <Text style={styles.timeText}>{formatTime(position)}</Text>
@@ -122,12 +173,13 @@ export default function MusicDetailScreen() {
         </Text>
       </View>
 
+      {/* LISTA DE PARTITURAS */}
       <View style={styles.filesSection}>
         <Text style={styles.sectionTitle}>PARTITURAS DISPONÍVEIS</Text>
         
         {musica.partiturasUrls && Object.keys(musica.partiturasUrls).length > 0 ? (
            Object.entries(musica.partiturasUrls).map(([instrumento, url]) => (
-             <TouchableOpacity key={instrumento} style={styles.fileCard} onPress={() => openPdf(url)}>
+             <TouchableOpacity key={instrumento} style={styles.fileCard} onPress={() => Linking.openURL(url)}>
                <View style={{flexDirection:'row', alignItems:'center', gap: 12}}>
                  <View style={styles.fileIcon}><FileText size={20} color="#FFF"/></View>
                  <Text style={styles.fileName}>{instrumento}</Text>
@@ -150,8 +202,12 @@ export default function MusicDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B0F19', padding: 20 },
   center: { flex: 1, backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center' },
-  backButton: { marginTop: 40, flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  
+  // Header ajustado para caber o botão de delete
+  header: { marginTop: 40, marginBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  backButton: { flexDirection: 'row', alignItems: 'center' },
   backText: { color: '#FFF', fontSize: 16, marginLeft: 8 },
+
   playerSection: { alignItems: 'center', marginBottom: 40 },
   albumCover: {
     width: 200, height: 200, borderRadius: 20,
@@ -166,7 +222,6 @@ const styles = StyleSheet.create({
   playButton: { marginBottom: 12 },
   statusText: { color: '#666', fontSize: 12 },
   
-
   progressContainer: {
     flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 10, marginBottom: 20, gap: 10
   },
