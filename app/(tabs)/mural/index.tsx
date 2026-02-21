@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, StatusBar, Modal, TextInput, Alert } from 'react-native';
+import { notificationService } from '../../../services/notification.service';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { profileService } from '../../../services/profile.service';
@@ -57,17 +58,15 @@ export default function MuralScreen() {
     if (!titulo || !conteudo) return Alert.alert("Erro", "Preencha título e conteúdo.");
     setSaving(true);
     try {
-      let recordId = editId;
-
       if (editId) {
         await supabase.from('notices').update({ title: titulo, content: conteudo, priority: prioridade }).eq('id', editId);
       } else {
-        const { data } = await supabase.from('notices').insert({ title: titulo, content: conteudo, priority: prioridade }).select().single();
-        if (data) recordId = data.id;
+        await supabase.from('notices').insert({ title: titulo, content: conteudo, priority: prioridade });
       }
-      
+
       if (notify) {
-        console.log("FASE 3: Disparar notificação para o aviso ID", recordId);
+        const prefixo = prioridade === 'alta' ? "🚨 AVISO URGENTE: " : "📢 NOVO AVISO: ";
+        await notificationService.triggerPushNotification("Mural da Orquestra", `${prefixo}${titulo}`);
       }
 
       setModalVisible(false);

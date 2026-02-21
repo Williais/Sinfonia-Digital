@@ -8,6 +8,7 @@ import { supabase } from '../../../lib/supabase';
 import { agendaService, Evento } from '../../../services/agenda.service';
 import { profileService } from '../../../services/profile.service';
 import { MapPin, Clock, CheckCircle, Plus, X, Save, Ban, AlertTriangle, Bell, BellOff } from 'lucide-react-native';
+import { notificationService } from '../../../services/notification.service'
 
 export default function AgendaScreen() {
   const router = useRouter();
@@ -93,29 +94,21 @@ export default function AgendaScreen() {
     setSaving(true);
     try {
       const isoDate = date.toISOString();
-
       const novoEvento = await agendaService.createEvent({
-        title: novoTitulo,
-        type: novoTipo,
-        date: isoDate,
-        location: novoLocal,
-        description: novaDescricao,
-        status: 'ativo'
+        title: novoTitulo, type: novoTipo, date: isoDate, location: novoLocal, description: novaDescricao, status: 'ativo'
       });
 
       if (notify) {
-        console.log("FASE 3: Disparar notificação para novo evento ID", novoEvento.id);
+        const msg = `${novoTipo.toUpperCase()}: ${novoTitulo} em ${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}`;
+        await notificationService.triggerPushNotification("Nova Programação! 📅", msg);
       }
 
-      Alert.alert("Sucesso", "Evento criado!");
+      Alert.alert("Sucesso", "Evento criado e orquestra notificada!");
       setModalVisible(false);
       limparFormulario();
       carregarAgenda(); 
     } catch (e) {
-      console.log(e);
       Alert.alert("Erro", "Falha ao criar evento.");
-    } finally {
-      setSaving(false);
     }
   }
 

@@ -4,7 +4,6 @@ import Constants from 'expo-constants';
 import { Platform, LogBox } from 'react-native';
 import { supabase } from '../lib/supabase';
 
-// Silencia a tela vermelha gigante do Expo Go para não atrapalhar o desenvolvimento
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
 Notifications.setNotificationHandler({
@@ -71,6 +70,17 @@ class NotificationService {
 
     return token;
   }
+
+  async triggerPushNotification(title: string, body: string) {
+  const { data } = await supabase.from('profiles').select('push_token').not('push_token', 'is', null);
+  const tokens = data?.map(i => i.push_token) || [];
+
+  if (tokens.length === 0) return;
+
+  await supabase.functions.invoke('send-push', {
+    body: { tokens, title, body }
+  });
+}
 }
 
 export const notificationService = new NotificationService();

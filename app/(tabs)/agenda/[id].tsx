@@ -6,6 +6,7 @@ import { agendaService, Evento } from '../../../services/agenda.service';
 import { profileService } from '../../../services/profile.service';
 import { supabase } from '../../../lib/supabase';
 import { MapPin, Clock, ChevronLeft, CheckCircle, XCircle, Users, Trash2, Edit, AlertOctagon, Bell, BellOff } from 'lucide-react-native';
+import { notificationService } from '../../../services/notification.service';
 
 export default function EventoDetalhesScreen() {
   const { id } = useLocalSearchParams();
@@ -103,12 +104,14 @@ export default function EventoDetalhesScreen() {
       });
 
       if (notify) {
-        console.log("FASE 3: Disparar notificação para alteração do evento ID", id);
+        let prefixo = editStatus === 'cancelado' ? "❌ CANCELADO: " : editStatus === 'adiado' ? "⏳ ADIADO: " : "🔄 ALTERAÇÃO: ";
+        const msg = `${prefixo}${editTitle}. Confira os detalhes no app.`;
+        await notificationService.triggerPushNotification("Atualização na Agenda", msg);
       }
 
       setEditModalVisible(false);
       carregarDados();
-      Alert.alert("Sucesso", "Evento atualizado.");
+      Alert.alert("Sucesso", "Evento atualizado!");
     } catch (e) {
       Alert.alert("Erro", "Falha ao atualizar.");
     }
