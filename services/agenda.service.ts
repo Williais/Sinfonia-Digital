@@ -94,6 +94,23 @@ class AgendaService {
       const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
       return error ? [] : data;
   }
+
+  async getAllMusicians() {
+    const { data, error } = await supabase.from('profiles').select('id, nickname, instrument, avatar_url').order('instrument', { ascending: true });
+    if (error) throw error;
+    return data;
+  }
+
+  async getEventAttendanceOnly(eventId: string) {
+    const { data, error } = await supabase.from('event_attendance').select('user_id, status').eq('event_id', eventId);
+    if (error) throw error;
+    return data;
+  }
+
+  async saveBulkAttendance(payload: { event_id: string, user_id: string, status: 'confirmado' | 'ausente' }[]) {
+    const { error } = await supabase.from('event_attendance').upsert(payload, { onConflict: 'event_id, user_id' });
+    if (error) throw error;
+  }
 }
 
 export const agendaService = new AgendaService();

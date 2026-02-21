@@ -48,15 +48,19 @@ class ProfileService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not found");
 
-    const response = await fetch(uri);
-    const blob = await response.blob();
+    const ext = uri.split('.').pop() || 'jpg';
+    const fileName = `${user.id}/${Date.now()}.${ext}`;
 
-    const fileName = `${user.id}/${Date.now()}.jpg`;
+    const formData = new FormData();
+    formData.append('file', {
+      uri: uri,
+      name: `avatar.${ext}`,
+      type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+    } as any);
 
     const { error } = await supabase.storage
       .from('avatars')
-      .upload(fileName, blob, {
-        contentType: 'image/jpeg',
+      .upload(fileName, formData, {
         upsert: true
       });
 
@@ -82,8 +86,6 @@ class ProfileService {
       .eq('user_id', userId)
       .single();
 
-    if (error) return { xp: 0, level: 1, concerts: 0, rehearsals: 0, frequencia: 0 };
-
     const { count: totalEventos } = await supabase
       .from('events')
       .select('*', { count: 'exact', head: true })
@@ -100,9 +102,40 @@ class ProfileService {
       : 100;
 
     return {
-      ...stats,
+      ...(stats || { xp: 0, level: 1, concerts: 0, rehearsals: 0 }),
       frequencia
     };
+  }
+
+  async getRankingFrequencia() {
+    const { data, error } = await supabase
+      .from('event_attendance')
+      .select('status, profiles(instrument)');
+
+    if (error || !data || data.length === 0) {
+      return [
+        { id: 1, naipe: 'Violoncelos', score: '0%' },
+        { id: 2, naipe: 'Violinos', score: '0%' },
+        { id: 3, naipe: 'Metais', score: '0%' },
+      ];
+    }
+
+    const stats: Record<string, { total: number, confirmados: number }> = {};
+
+    data.forEach((row: any) => {
+      if (!row.profiles) return;
+      const naipe = row.profiles.instrument || 'Outros';
+      if (!stats[naipe]) stats[naipe] = { total: 0, confirmados: 0 };
+      stats[naipe].total += 1;
+      if (row.status === 'confirmado') stats[naipe].confirmados += 1;
+    });
+
+    const ranking = Object.keys(stats).map((naipe, index) => {
+      const perc = Math.round((stats[naipe].confirmados / stats[naipe].total) * 100);
+      return { id: index, naipe, score: `${perc}%`, rawScore: perc };
+    });
+
+    return ranking.sort((a, b) => b.rawScore - a.rawScore).slice(0, 3);
   }
 }
 

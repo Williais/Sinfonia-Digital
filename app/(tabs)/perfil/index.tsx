@@ -1,22 +1,13 @@
 import React, { useState, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator, StatusBar
-} from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator, StatusBar } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { profileService } from '../../../services/profile.service';
 import { LogOut, Settings, Award, Clock, Handshake, Zap, Timer, BookOpen, Megaphone, Star, ShieldCheck } from 'lucide-react-native';
 
 const IconMap: any = {
-  Clock: Clock,
-  ShieldCheck: ShieldCheck,
-  Handshake: Handshake,
-  Award: Award,
-  Zap: Zap,
-  Timer: Timer,
-  BookOpen: BookOpen,
-  Megaphone: Megaphone,
-  Star: Star
+  Clock: Clock, ShieldCheck: ShieldCheck, Handshake: Handshake, Award: Award,
+  Zap: Zap, Timer: Timer, BookOpen: BookOpen, Megaphone: Megaphone, Star: Star
 };
 
 export default function ProfileScreen() {
@@ -25,6 +16,7 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [badges, setBadges] = useState<any[]>([]);
+  const [ranking, setRanking] = useState<any[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,15 +32,15 @@ export default function ProfileScreen() {
       const userStats = await profileService.getUserStats();
       setStats(userStats);
 
+      const rankData = await profileService.getRankingFrequencia();
+      setRanking(rankData);
+
       const { data: userBadges } = await supabase
         .from('user_badges')
         .select('*, badges(*)')
         .eq('user_id', userProfile.id);
-      
       setBadges(userBadges || []);
-
     } catch (error) {
-      console.log(error);
     } finally {
       setLoading(false);
     }
@@ -99,18 +91,12 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.profileCard}>
-          <Image 
-            source={{ uri: profile?.avatar_url || 'https://github.com/shadcn.png' }} 
-            style={[styles.avatar, { borderColor: levelColor }]} 
-          />
+          <Image source={{ uri: profile?.avatar_url || 'https://github.com/shadcn.png' }} style={[styles.avatar, { borderColor: levelColor }]} />
           <View>
             <Text style={styles.name}>{profile?.nickname || 'Músico'}</Text>
             <Text style={styles.instrument}>{profile?.instrument} • {profile?.role === 'admin' ? 'Maestro/Admin' : 'Músico'}</Text>
-            
             <View style={[styles.levelBadge, { backgroundColor: levelColor + '20', borderColor: levelColor }]}>
-              <Text style={[styles.levelText, { color: levelColor }]}>
-                Nível {stats?.level} • {getLevelName(stats?.level)}
-              </Text>
+              <Text style={[styles.levelText, { color: levelColor }]}>Nível {stats?.level} • {getLevelName(stats?.level)}</Text>
             </View>
           </View>
         </View>
@@ -149,9 +135,7 @@ export default function ProfileScreen() {
             const IconComponent = IconMap[item.badges.icon_name] || Award;
             return (
               <View key={item.id} style={styles.badgeCard}>
-                <View style={styles.badgeIconBg}>
-                  <IconComponent size={24} color="#FFD700" />
-                </View>
+                <View style={styles.badgeIconBg}><IconComponent size={24} color="#FFD700" /></View>
                 <Text style={styles.badgeName}>{item.badges.name}</Text>
                 <Text style={styles.badgeDesc}>{item.badges.description}</Text>
               </View>
@@ -167,23 +151,16 @@ export default function ProfileScreen() {
 
       <Text style={styles.sectionTitle}>RANKING DE FREQUÊNCIA (MÊS)</Text>
       <View style={styles.rankingCard}>
-        <View style={styles.rankingRow}>
-          <Text style={styles.rankPos}>1º</Text>
-          <Text style={styles.rankName}>Violoncelos</Text>
-          <Text style={styles.rankValue}>98%</Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.rankingRow}>
-          <Text style={styles.rankPos}>2º</Text>
-          <Text style={styles.rankName}>Violinos</Text>
-          <Text style={styles.rankValue}>92%</Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.rankingRow}>
-          <Text style={[styles.rankPos, {color: '#CD7F32'}]}>3º</Text>
-          <Text style={styles.rankName}>Metais</Text>
-          <Text style={styles.rankValue}>85%</Text>
-        </View>
+        {ranking.map((item, index) => (
+          <View key={item.id}>
+            <View style={styles.rankingRow}>
+              <Text style={[styles.rankPos, index === 2 && {color: '#CD7F32'}]}>{index + 1}º</Text>
+              <Text style={styles.rankName}>{item.naipe}</Text>
+              <Text style={styles.rankValue}>{item.score}</Text>
+            </View>
+            {index !== ranking.length - 1 && <View style={styles.divider} />}
+          </View>
+        ))}
       </View>
 
       <View style={{height: 100}} />
@@ -194,41 +171,32 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B0F19' },
   center: { flex: 1, backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center' },
-  
   header: { padding: 20, paddingTop: 60, paddingBottom: 10 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   pageTitle: { fontSize: 28, fontWeight: 'bold', color: '#FFF' },
-  
   profileCard: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
   avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 3 },
   name: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
   instrument: { fontSize: 14, color: '#BBB', marginBottom: 6 },
-  
   levelBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, alignSelf: 'flex-start' },
   levelText: { fontSize: 12, fontWeight: 'bold' },
-
   xpContainer: { marginTop: 0 },
   xpHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   xpLabel: { color: '#888', fontSize: 12 },
   progressBarBg: { height: 8, backgroundColor: '#1F2937', borderRadius: 4, overflow: 'hidden' },
   progressBarFill: { height: '100%', borderRadius: 4 },
-
   statsGrid: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 30 },
   statBox: { flex: 1, backgroundColor: '#151A26', borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   statNumber: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
   statLabel: { fontSize: 12, color: '#666' },
-
   sectionTitle: { paddingHorizontal: 20, color: '#666', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, marginBottom: 12 },
-
   badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 12, marginBottom: 30 },
   badgeCard: { width: '48%', backgroundColor: '#151A26', borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   badgeIconBg: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255, 215, 0, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   badgeName: { color: '#FFF', fontWeight: 'bold', fontSize: 14, textAlign: 'center', marginBottom: 4 },
   badgeDesc: { color: '#888', fontSize: 10, textAlign: 'center' },
-
   emptyBadges: { alignItems: 'center', gap: 10, padding: 20, marginBottom: 30 },
   emptyText: { color: '#666', fontStyle: 'italic' },
-
   rankingCard: { marginHorizontal: 20, backgroundColor: '#151A26', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   rankingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
   rankPos: { width: 30, fontSize: 16, fontWeight: 'bold', color: '#FFD700' },
