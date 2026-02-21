@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar, Alert, Modal, TextInput 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar, Alert, Modal, TextInput, Platform 
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { agendaService, Evento } from '../../../services/agenda.service';
 import { profileService } from '../../../services/profile.service';
 import { supabase } from '../../../lib/supabase';
@@ -21,7 +22,14 @@ export default function EventoDetalhesScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   
   const [editStatus, setEditStatus] = useState<'ativo' | 'cancelado' | 'adiado'>('ativo');
+  const [editTitle, setEditTitle] = useState('');
+  const [editType, setEditType] = useState<'ensaio' | 'concerto' | 'apresentacao' | 'extra'>('ensaio');
+  const [editLocation, setEditLocation] = useState('');
   const [editDescricao, setEditDescricao] = useState('');
+  const [editDate, setEditDate] = useState(new Date());
+  
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -42,7 +50,11 @@ export default function EventoDetalhesScreen() {
       
       if (ev) {
           setEditStatus(ev.status);
+          setEditTitle(ev.title);
+          setEditType(ev.type);
+          setEditLocation(ev.location);
           setEditDescricao(ev.description || '');
+          setEditDate(new Date(ev.date));
       }
 
       const parts = await agendaService.getParticipantes(id as string);
@@ -53,11 +65,29 @@ export default function EventoDetalhesScreen() {
       setStats({ confirmados, ausentes });
 
     } catch (error) {
-      console.log(error);
     } finally {
       setLoading(false);
     }
   }
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (selectedDate) {
+      const currentDate = new Date(editDate);
+      currentDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+      setEditDate(currentDate);
+      if (Platform.OS === 'android') setShowTimePicker(true);
+    }
+  };
+
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    if (Platform.OS === 'android') setShowTimePicker(false);
+    if (selectedTime) {
+      const currentDate = new Date(editDate);
+      currentDate.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+      setEditDate(currentDate);
+    }
+  };
 
   async function handleDelete() {
     Alert.alert(
@@ -82,8 +112,16 @@ export default function EventoDetalhesScreen() {
   }
 
   async function handleUpdate() {
+    if (!editTitle || !editLocation) {
+        return Alert.alert("Erro", "Título e Local são obrigatórios.");
+    }
+    
     try {
       await agendaService.updateEvent(id as string, {
+        title: editTitle,
+        type: editType,
+        date: editDate.toISOString(),
+        location: editLocation,
         status: editStatus,
         description: editDescricao
       });
@@ -108,6 +146,16 @@ export default function EventoDetalhesScreen() {
       participantes.forEach(p => { if (p.status === 'confirmado') { const inst = p.instrument || 'Outros'; if (!grupos[inst]) grupos[inst] = []; grupos[inst].push(p); } });
       return grupos;
   };
+
+  const TypeOption = ({ label, value }: { label: string, value: typeof editType }) => (
+    <TouchableOpacity 
+      style={[styles.typeOption, editType === value && styles.typeOptionActive]}
+      onPress={() => setEditType(value)}
+    >
+      <Text style={[styles.typeTextOption, editType === value && { color: '#FFF' }]}>{label}</Text>
+    </TouchableOpacity>
+  );
+
   const grupos = getAgrupados();
 
   if (loading) return <View style={styles.center}><ActivityIndicator color="#D48C70" /></View>;
@@ -193,33 +241,63 @@ export default function EventoDetalhesScreen() {
           </View>
       )) : <Text style={styles.emptyText}>Ninguém confirmado.</Text>}
 
-      <Modal visible={editModalVisible} animationType="fade" transparent>
+      <Modal visible={editModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
                 <Text style={styles.modalTitle}>Gerenciar Evento</Text>
                 
-                <Text style={styles.label}>Status do Evento</Text>
-                <View style={styles.row}>
-                    <TouchableOpacity onPress={() => setEditStatus('ativo')} style={[styles.optBtn, editStatus === 'ativo' && styles.optBtnActive]}><Text style={styles.optText}>Ativo</Text></TouchableOpacity>
-                    <TouchableOpacity onPress={() => setEditStatus('cancelado')} style={[styles.optBtn, editStatus === 'cancelado' && styles.optBtnCancel]}><Text style={styles.optText}>Cancelado</Text></TouchableOpacity>
-                    <TouchableOpacity onPress={() => setEditStatus('adiado')} style={[styles.optBtn, editStatus === 'adiado' && styles.optBtnAdiado]}><Text style={styles.optText}>Adiado</Text></TouchableOpacity>
-                </View>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalForm}>
+                    <Text style={styles.label}>Status do Evento</Text>
+                    <View style={styles.row}>
+                        <TouchableOpacity onPress={() => setEditStatus('ativo')} style={[styles.optBtn, editStatus === 'ativo' && styles.optBtnActive]}><Text style={styles.optText}>Ativo</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={() => setEditStatus('cancelado')} style={[styles.optBtn, editStatus === 'cancelado' && styles.optBtnCancel]}><Text style={styles.optText}>Cancelado</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={() => setEditStatus('adiado')} style={[styles.optBtn, editStatus === 'adiado' && styles.optBtnAdiado]}><Text style={styles.optText}>Adiado</Text></TouchableOpacity>
+                    </View>
 
-                <Text style={styles.label}>Descrição / Avisos</Text>
-                <TextInput style={styles.input} value={editDescricao} onChangeText={setEditDescricao} multiline />
+                    <Text style={styles.label}>Título</Text>
+                    <TextInput style={styles.input} value={editTitle} onChangeText={setEditTitle} />
 
-                <TouchableOpacity style={styles.saveBtn} onPress={handleUpdate}>
-                    <Text style={styles.saveText}>Salvar Alterações</Text>
-                </TouchableOpacity>
+                    <Text style={styles.label}>Tipo de Evento</Text>
+                    <View style={styles.typeRow}>
+                      <TypeOption label="Ensaio" value="ensaio" />
+                      <TypeOption label="Apres." value="apresentacao" />
+                      <TypeOption label="Concerto" value="concerto" />
+                    </View>
 
-                <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
-                    <Trash2 size={20} color="#EF4444" />
-                    <Text style={styles.deleteText}>Excluir Evento</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.closeBtn} onPress={() => setEditModalVisible(false)}>
-                    <Text style={{color: '#666'}}>Cancelar</Text>
-                </TouchableOpacity>
+                    <Text style={styles.label}>Data e Hora</Text>
+                    <TouchableOpacity style={styles.dateDisplay} onPress={() => setShowDatePicker(true)}>
+                      <Clock size={20} color="#D48C70" />
+                      <Text style={styles.dateDisplayText}>
+                        {editDate.toLocaleDateString('pt-BR')} às {editDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {showDatePicker && (
+                      <DateTimePicker value={editDate} mode="date" display="default" onChange={onDateChange} />
+                    )}
+                    {showTimePicker && (
+                      <DateTimePicker value={editDate} mode="time" display="default" onChange={onTimeChange} />
+                    )}
+
+                    <Text style={styles.label}>Local</Text>
+                    <TextInput style={styles.input} value={editLocation} onChangeText={setEditLocation} />
+
+                    <Text style={styles.label}>Descrição / Avisos</Text>
+                    <TextInput style={[styles.input, styles.textArea]} value={editDescricao} onChangeText={setEditDescricao} multiline />
+
+                    <TouchableOpacity style={styles.saveBtn} onPress={handleUpdate}>
+                        <Text style={styles.saveText}>Salvar Alterações</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
+                        <Trash2 size={20} color="#EF4444" />
+                        <Text style={styles.deleteText}>Excluir Evento</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.closeBtn} onPress={() => setEditModalVisible(false)}>
+                        <Text style={{color: '#666'}}>Cancelar</Text>
+                    </TouchableOpacity>
+                </ScrollView>
             </View>
         </View>
       </Modal>
@@ -262,18 +340,26 @@ const styles = StyleSheet.create({
   canceladoBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#EF4444', padding: 8, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12 },
   canceladoText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
   
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20 },
-  modalContainer: { backgroundColor: '#151A26', borderRadius: 24, padding: 24 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
+  modalContainer: { backgroundColor: '#151A26', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, height: '90%' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF', marginBottom: 20, textAlign: 'center' },
-  label: { color: '#D48C70', marginBottom: 8, fontWeight: 'bold' },
-  row: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  modalForm: { paddingBottom: 40 },
+  label: { color: '#D48C70', marginBottom: 8, fontWeight: 'bold', marginTop: 16 },
+  row: { flexDirection: 'row', gap: 8 },
+  typeRow: { flexDirection: 'row', gap: 8 },
+  typeOption: { flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: '#0B0F19', borderRadius: 8, borderWidth: 1, borderColor: '#333' },
+  typeOptionActive: { backgroundColor: '#D48C70', borderColor: '#D48C70' },
+  typeTextOption: { color: '#666', fontWeight: 'bold', fontSize: 12 },
+  dateDisplay: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0B0F19', padding: 14, borderRadius: 8, borderWidth: 1, borderColor: '#333', gap: 10 },
+  dateDisplayText: { color: '#FFF', fontSize: 16 },
   optBtn: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#0B0F19', borderWidth: 1, borderColor: '#333', alignItems: 'center' },
   optBtnActive: { backgroundColor: '#10B981', borderColor: '#10B981' },
   optBtnCancel: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
   optBtnAdiado: { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
   optText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
-  input: { backgroundColor: '#0B0F19', color: '#FFF', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#333', minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
-  saveBtn: { backgroundColor: '#D48C70', padding: 16, borderRadius: 12, alignItems: 'center', marginBottom: 12 },
+  input: { backgroundColor: '#0B0F19', color: '#FFF', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#333', fontSize: 16 },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
+  saveBtn: { backgroundColor: '#D48C70', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 24, marginBottom: 12 },
   saveText: { color: '#FFF', fontWeight: 'bold' },
   deleteBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#EF4444', marginBottom: 12 },
   deleteText: { color: '#EF4444', fontWeight: 'bold' },

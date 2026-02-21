@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, ActivityIndicator, StatusBar, RefreshControl, TouchableOpacity, Modal, TextInput, Alert, ScrollView, Platform 
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker'; // Novo import
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../../../lib/supabase';
 import { agendaService, Evento } from '../../../services/agenda.service';
 import { profileService } from '../../../services/profile.service';
@@ -68,7 +68,6 @@ export default function AgendaScreen() {
   const onDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (selectedDate) {
-
       const currentDate = new Date(date);
       currentDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
       setDate(currentDate);
@@ -92,7 +91,6 @@ export default function AgendaScreen() {
 
     setSaving(true);
     try {
-  
       const isoDate = date.toISOString();
 
       await agendaService.createEvent({
@@ -160,7 +158,6 @@ export default function AgendaScreen() {
     const isConcerto = item.type === 'concerto';
     const isApresentacao = item.type === 'apresentacao';
     
-    // Status visual
     const isCancelado = item.status === 'cancelado';
     const isAdiado = item.status === 'adiado';
 
@@ -270,7 +267,6 @@ export default function AgendaScreen() {
         </TouchableOpacity>
       )}
 
-      {/* MODAL DE CRIAÇÃO */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -361,8 +357,8 @@ const styles = StyleSheet.create({
   dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#333', marginTop: 18, borderWidth: 2, borderColor: '#0B0F19', zIndex: 2 },
   dotConcerto: { backgroundColor: '#D48C70', width: 14, height: 14, borderRadius: 7 },
   dotApresentacao: { backgroundColor: '#A855F7', width: 14, height: 14, borderRadius: 7 },
-  dotCancelado: { backgroundColor: '#EF4444' }, // Vermelho
-  dotAdiado: { backgroundColor: '#F59E0B' }, // Amarelo
+  dotCancelado: { backgroundColor: '#EF4444' }, 
+  dotAdiado: { backgroundColor: '#F59E0B' }, 
 
   line: { width: 2, flex: 1, backgroundColor: '#1F2937', marginTop: -2, marginBottom: -18 },
   rightCol: { flex: 1, paddingBottom: 24 },
@@ -409,7 +405,6 @@ const styles = StyleSheet.create({
   typeOptionActive: { backgroundColor: '#D48C70', borderColor: '#D48C70' },
   typeTextOption: { color: '#666', fontWeight: 'bold', fontSize: 12 },
   
-  // Estilo do Botão de Data
   dateBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0B0F19', padding: 14, borderRadius: 8, borderWidth: 1, borderColor: '#333', gap: 10 },
   dateBtnText: { color: '#FFF', fontSize: 16 },
 
