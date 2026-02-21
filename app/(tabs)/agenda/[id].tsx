@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar, Alert, Modal, TextInput, Platform 
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar, Alert, Modal, TextInput, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { agendaService, Evento } from '../../../services/agenda.service';
 import { profileService } from '../../../services/profile.service';
 import { supabase } from '../../../lib/supabase';
-import { MapPin, Clock, ChevronLeft, CheckCircle, XCircle, Users, Trash2, Edit, AlertOctagon } from 'lucide-react-native';
+import { MapPin, Clock, ChevronLeft, CheckCircle, XCircle, Users, Trash2, Edit, AlertOctagon, Bell, BellOff } from 'lucide-react-native';
 
 export default function EventoDetalhesScreen() {
   const { id } = useLocalSearchParams();
@@ -17,7 +15,6 @@ export default function EventoDetalhesScreen() {
   const [evento, setEvento] = useState<Evento | null>(null);
   const [participantes, setParticipantes] = useState<any[]>([]);
   const [stats, setStats] = useState({ confirmados: 0, ausentes: 0 });
-  
   const [isAdmin, setIsAdmin] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   
@@ -27,6 +24,7 @@ export default function EventoDetalhesScreen() {
   const [editLocation, setEditLocation] = useState('');
   const [editDescricao, setEditDescricao] = useState('');
   const [editDate, setEditDate] = useState(new Date());
+  const [notify, setNotify] = useState(false);
   
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -38,7 +36,6 @@ export default function EventoDetalhesScreen() {
   async function carregarDados() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
       const profile = await profileService.getUserProfile();
       const allowedRoles = ['admin', 'maestro'];
       const isPowerUser = allowedRoles.includes(profile.role) || profile.is_spalla;
@@ -59,11 +56,9 @@ export default function EventoDetalhesScreen() {
 
       const parts = await agendaService.getParticipantes(id as string);
       setParticipantes(parts);
-
       const confirmados = parts.filter(p => p.status === 'confirmado').length;
       const ausentes = parts.filter(p => p.status === 'ausente').length;
       setStats({ confirmados, ausentes });
-
     } catch (error) {
     } finally {
       setLoading(false);
@@ -90,41 +85,27 @@ export default function EventoDetalhesScreen() {
   };
 
   async function handleDelete() {
-    Alert.alert(
-      "Excluir Evento",
-      "Tem certeza? Isso apagará todas as presenças confirmadas.",
-      [
+    Alert.alert("Excluir Evento", "Tem certeza? Isso apagará todas as presenças confirmadas.", [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Excluir", 
-          style: "destructive", 
-          onPress: async () => {
-            try {
-              await agendaService.deleteEvent(id as string);
-              router.back();
-            } catch (e) {
-              Alert.alert("Erro", "Não foi possível excluir.");
-            }
-          }
-        }
-      ]
-    );
+        { text: "Excluir", style: "destructive", onPress: async () => {
+            try { await agendaService.deleteEvent(id as string); router.back(); } 
+            catch (e) { Alert.alert("Erro", "Não foi possível excluir."); }
+        }}
+    ]);
   }
 
   async function handleUpdate() {
-    if (!editTitle || !editLocation) {
-        return Alert.alert("Erro", "Título e Local são obrigatórios.");
-    }
-    
+    if (!editTitle || !editLocation) return Alert.alert("Erro", "Título e Local são obrigatórios.");
     try {
       await agendaService.updateEvent(id as string, {
-        title: editTitle,
-        type: editType,
-        date: editDate.toISOString(),
-        location: editLocation,
-        status: editStatus,
-        description: editDescricao
+        title: editTitle, type: editType, date: editDate.toISOString(),
+        location: editLocation, status: editStatus, description: editDescricao
       });
+
+      if (notify) {
+        console.log("FASE 3: Disparar notificação para alteração do evento ID", id);
+      }
+
       setEditModalVisible(false);
       carregarDados();
       Alert.alert("Sucesso", "Evento atualizado.");
@@ -148,10 +129,7 @@ export default function EventoDetalhesScreen() {
   };
 
   const TypeOption = ({ label, value }: { label: string, value: typeof editType }) => (
-    <TouchableOpacity 
-      style={[styles.typeOption, editType === value && styles.typeOptionActive]}
-      onPress={() => setEditType(value)}
-    >
+    <TouchableOpacity style={[styles.typeOption, editType === value && styles.typeOptionActive]} onPress={() => setEditType(value)}>
       <Text style={[styles.typeTextOption, editType === value && { color: '#FFF' }]}>{label}</Text>
     </TouchableOpacity>
   );
@@ -167,47 +145,25 @@ export default function EventoDetalhesScreen() {
   return (
     <ScrollView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
-
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ChevronLeft size={24} color="#FFF" />
           <Text style={styles.backText}>Voltar</Text>
         </TouchableOpacity>
-        
         {isAdmin && (
-            <TouchableOpacity onPress={() => setEditModalVisible(true)}>
+            <TouchableOpacity onPress={() => { setNotify(false); setEditModalVisible(true); }}>
                 <Edit size={24} color="#D48C70" />
             </TouchableOpacity>
         )}
       </View>
 
       <View style={styles.titleSection}>
-        {isCancelado && (
-            <View style={styles.canceladoBadge}>
-                <AlertOctagon size={16} color="#FFF" />
-                <Text style={styles.canceladoText}>EVENTO CANCELADO</Text>
-            </View>
-        )}
-        
-        <Text style={[styles.pageTitle, isCancelado && {textDecorationLine: 'line-through', color: '#666'}]}>
-            {evento.title}
-        </Text>
+        {isCancelado && (<View style={styles.canceladoBadge}><AlertOctagon size={16} color="#FFF" /><Text style={styles.canceladoText}>EVENTO CANCELADO</Text></View>)}
+        <Text style={[styles.pageTitle, isCancelado && {textDecorationLine: 'line-through', color: '#666'}]}>{evento.title}</Text>
         <Text style={styles.typeBadge}>{evento.type.toUpperCase()}</Text>
-        
-        <View style={styles.infoRow}>
-          <Clock size={16} color="#D48C70" />
-          <Text style={styles.infoText}>
-            {data.toLocaleDateString('pt-BR')} às {data.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}h
-          </Text>
-        </View>
-        <View style={styles.infoRow}>
-          <MapPin size={16} color="#D48C70" />
-          <Text style={styles.infoText}>{evento.location}</Text>
-        </View>
-
-        {evento.description && (
-          <Text style={styles.description}>{evento.description}</Text>
-        )}
+        <View style={styles.infoRow}><Clock size={16} color="#D48C70" /><Text style={styles.infoText}>{data.toLocaleDateString('pt-BR')} às {data.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}h</Text></View>
+        <View style={styles.infoRow}><MapPin size={16} color="#D48C70" /><Text style={styles.infoText}>{evento.location}</Text></View>
+        {evento.description && <Text style={styles.description}>{evento.description}</Text>}
       </View>
 
       {!isCancelado && (
@@ -218,7 +174,6 @@ export default function EventoDetalhesScreen() {
                 <CheckCircle size={20} color={evento.my_status === 'confirmado' ? "#FFF" : "#10B981"} />
                 <Text style={[styles.btnText, evento.my_status === 'confirmado' && {color:'#FFF'}]}>Vou</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity style={[styles.statusBtn, evento.my_status === 'ausente' ? styles.btnAusente : styles.btnOutline]} onPress={() => handlePresenca('ausente')}>
                 <XCircle size={20} color={evento.my_status === 'ausente' ? "#FFF" : "#EF4444"} />
                 <Text style={[styles.btnText, evento.my_status === 'ausente' && {color:'#FFF'}]}>Não Vou</Text>
@@ -245,7 +200,6 @@ export default function EventoDetalhesScreen() {
         <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
                 <Text style={styles.modalTitle}>Gerenciar Evento</Text>
-                
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalForm}>
                     <Text style={styles.label}>Status do Evento</Text>
                     <View style={styles.row}>
@@ -253,47 +207,38 @@ export default function EventoDetalhesScreen() {
                         <TouchableOpacity onPress={() => setEditStatus('cancelado')} style={[styles.optBtn, editStatus === 'cancelado' && styles.optBtnCancel]}><Text style={styles.optText}>Cancelado</Text></TouchableOpacity>
                         <TouchableOpacity onPress={() => setEditStatus('adiado')} style={[styles.optBtn, editStatus === 'adiado' && styles.optBtnAdiado]}><Text style={styles.optText}>Adiado</Text></TouchableOpacity>
                     </View>
-
                     <Text style={styles.label}>Título</Text>
                     <TextInput style={styles.input} value={editTitle} onChangeText={setEditTitle} />
-
                     <Text style={styles.label}>Tipo de Evento</Text>
                     <View style={styles.typeRow}>
                       <TypeOption label="Ensaio" value="ensaio" />
                       <TypeOption label="Apres." value="apresentacao" />
                       <TypeOption label="Concerto" value="concerto" />
                     </View>
-
                     <Text style={styles.label}>Data e Hora</Text>
                     <TouchableOpacity style={styles.dateDisplay} onPress={() => setShowDatePicker(true)}>
                       <Clock size={20} color="#D48C70" />
-                      <Text style={styles.dateDisplayText}>
-                        {editDate.toLocaleDateString('pt-BR')} às {editDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
-                      </Text>
+                      <Text style={styles.dateDisplayText}>{editDate.toLocaleDateString('pt-BR')} às {editDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</Text>
                     </TouchableOpacity>
-
-                    {showDatePicker && (
-                      <DateTimePicker value={editDate} mode="date" display="default" onChange={onDateChange} />
-                    )}
-                    {showTimePicker && (
-                      <DateTimePicker value={editDate} mode="time" display="default" onChange={onTimeChange} />
-                    )}
-
+                    {showDatePicker && <DateTimePicker value={editDate} mode="date" display="default" onChange={onDateChange} />}
+                    {showTimePicker && <DateTimePicker value={editDate} mode="time" display="default" onChange={onTimeChange} />}
                     <Text style={styles.label}>Local</Text>
                     <TextInput style={styles.input} value={editLocation} onChangeText={setEditLocation} />
-
                     <Text style={styles.label}>Descrição / Avisos</Text>
                     <TextInput style={[styles.input, styles.textArea]} value={editDescricao} onChangeText={setEditDescricao} multiline />
+
+                    <TouchableOpacity style={[styles.notifyToggle, notify && styles.notifyToggleActive]} onPress={() => setNotify(!notify)}>
+                      {notify ? <Bell size={20} color="#D48C70" /> : <BellOff size={20} color="#666" />}
+                      <Text style={[styles.notifyText, notify && styles.notifyTextActive]}>Enviar notificação sobre alteração</Text>
+                    </TouchableOpacity>
 
                     <TouchableOpacity style={styles.saveBtn} onPress={handleUpdate}>
                         <Text style={styles.saveText}>Salvar Alterações</Text>
                     </TouchableOpacity>
-
                     <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
                         <Trash2 size={20} color="#EF4444" />
                         <Text style={styles.deleteText}>Excluir Evento</Text>
                     </TouchableOpacity>
-                    
                     <TouchableOpacity style={styles.closeBtn} onPress={() => setEditModalVisible(false)}>
                         <Text style={{color: '#666'}}>Cancelar</Text>
                     </TouchableOpacity>
@@ -301,7 +246,6 @@ export default function EventoDetalhesScreen() {
             </View>
         </View>
       </Modal>
-
       <View style={{height: 50}} />
     </ScrollView>
   );
@@ -336,10 +280,8 @@ const styles = StyleSheet.create({
   personRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
   personName: { color: '#DDD', fontSize: 14 },
   emptyText: { color: '#666', fontStyle: 'italic', textAlign: 'center', marginTop: 20 },
-  
   canceladoBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#EF4444', padding: 8, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12 },
   canceladoText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
-  
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
   modalContainer: { backgroundColor: '#151A26', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, height: '90%' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF', marginBottom: 20, textAlign: 'center' },
@@ -359,6 +301,10 @@ const styles = StyleSheet.create({
   optText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
   input: { backgroundColor: '#0B0F19', color: '#FFF', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#333', fontSize: 16 },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
+  notifyToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24, padding: 12, borderRadius: 8, backgroundColor: '#0B0F19', borderWidth: 1, borderColor: '#333' },
+  notifyToggleActive: { borderColor: 'rgba(212, 140, 112, 0.4)', backgroundColor: 'rgba(212, 140, 112, 0.1)' },
+  notifyText: { color: '#666', fontSize: 14, fontWeight: '500' },
+  notifyTextActive: { color: '#D48C70' },
   saveBtn: { backgroundColor: '#D48C70', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 24, marginBottom: 12 },
   saveText: { color: '#FFF', fontWeight: 'bold' },
   deleteBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#EF4444', marginBottom: 12 },

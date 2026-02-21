@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { agendaService, Evento, Aviso } from '../../services/agenda.service';
 import { acervoService, Musica } from '../../services/acervo.service';
 import { profileService } from '../../services/profile.service';
+import { notificationService } from '../../services/notification.service';
 import { Calendar, Music, ChevronRight, AlertTriangle, Trophy, MapPin, Clock, CheckCircle, XCircle, Activity, ClipboardCheck } from 'lucide-react-native';
 
 export default function HomeScreen() {
@@ -28,6 +29,8 @@ export default function HomeScreen() {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
+
+      notificationService.registerForPushNotificationsAsync(authUser.id).catch(console.error);
 
       const perfil = await profileService.getUserProfile();
       setUser(perfil);

@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../../../lib/supabase';
 import { agendaService, Evento } from '../../../services/agenda.service';
 import { profileService } from '../../../services/profile.service';
-import { MapPin, Clock, CheckCircle, Plus, X, Save, Ban, AlertTriangle } from 'lucide-react-native';
+import { MapPin, Clock, CheckCircle, Plus, X, Save, Ban, AlertTriangle, Bell, BellOff } from 'lucide-react-native';
 
 export default function AgendaScreen() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function AgendaScreen() {
   const [novoTipo, setNovoTipo] = useState<'ensaio' | 'concerto' | 'apresentacao'>('ensaio');
   const [novoLocal, setNovoLocal] = useState('');
   const [novaDescricao, setNovaDescricao] = useState('');
+  const [notify, setNotify] = useState(true);
 
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -93,7 +94,7 @@ export default function AgendaScreen() {
     try {
       const isoDate = date.toISOString();
 
-      await agendaService.createEvent({
+      const novoEvento = await agendaService.createEvent({
         title: novoTitulo,
         type: novoTipo,
         date: isoDate,
@@ -101,6 +102,10 @@ export default function AgendaScreen() {
         description: novaDescricao,
         status: 'ativo'
       });
+
+      if (notify) {
+        console.log("FASE 3: Disparar notificação para novo evento ID", novoEvento.id);
+      }
 
       Alert.alert("Sucesso", "Evento criado!");
       setModalVisible(false);
@@ -120,6 +125,7 @@ export default function AgendaScreen() {
     setNovaDescricao('');
     setNovoTipo('ensaio');
     setDate(new Date());
+    setNotify(true);
   }
 
   const formatarDataRender = (isoString: string) => {
@@ -277,7 +283,7 @@ export default function AgendaScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalForm}>
+            <ScrollView contentContainerStyle={styles.modalForm} showsVerticalScrollIndicator={false}>
               <Text style={styles.label}>Título</Text>
               <TextInput style={styles.input} placeholder="Ex: Ensaio de Naipe" placeholderTextColor="#666" value={novoTitulo} onChangeText={setNovoTitulo} />
 
@@ -288,7 +294,6 @@ export default function AgendaScreen() {
                 <TypeOption label="Concerto" value="concerto" />
               </View>
 
-       
               <Text style={styles.label}>Data e Hora</Text>
               <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
                 <Clock size={20} color="#D48C70" />
@@ -320,6 +325,14 @@ export default function AgendaScreen() {
 
               <Text style={styles.label}>Descrição (Opcional)</Text>
               <TextInput style={[styles.input, styles.textArea]} placeholder="Detalhes, repertório..." placeholderTextColor="#666" multiline numberOfLines={3} value={novaDescricao} onChangeText={setNovaDescricao} />
+
+              <TouchableOpacity 
+                style={[styles.notifyToggle, notify && styles.notifyToggleActive]} 
+                onPress={() => setNotify(!notify)}
+              >
+                {notify ? <Bell size={20} color="#D48C70" /> : <BellOff size={20} color="#666" />}
+                <Text style={[styles.notifyText, notify && styles.notifyTextActive]}>Enviar notificação aos músicos</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity style={styles.saveButton} onPress={handleCreateEvent} disabled={saving}>
                 {saving ? <ActivityIndicator color="#FFF" /> : (
@@ -399,7 +412,6 @@ const styles = StyleSheet.create({
   label: { color: '#D48C70', fontSize: 12, fontWeight: 'bold', marginBottom: 8, marginTop: 16 },
   input: { backgroundColor: '#0B0F19', color: '#FFF', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#333', fontSize: 16 },
   textArea: { height: 80, textAlignVertical: 'top' },
-  row: { flexDirection: 'row' },
   typeRow: { flexDirection: 'row', gap: 8 },
   typeOption: { flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: '#0B0F19', borderRadius: 8, borderWidth: 1, borderColor: '#333' },
   typeOptionActive: { backgroundColor: '#D48C70', borderColor: '#D48C70' },
@@ -408,6 +420,11 @@ const styles = StyleSheet.create({
   dateBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0B0F19', padding: 14, borderRadius: 8, borderWidth: 1, borderColor: '#333', gap: 10 },
   dateBtnText: { color: '#FFF', fontSize: 16 },
 
-  saveButton: { backgroundColor: '#D48C70', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 16, borderRadius: 12, marginTop: 32, gap: 8 },
+  notifyToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24, padding: 12, borderRadius: 8, backgroundColor: '#0B0F19', borderWidth: 1, borderColor: '#333' },
+  notifyToggleActive: { borderColor: 'rgba(212, 140, 112, 0.4)', backgroundColor: 'rgba(212, 140, 112, 0.1)' },
+  notifyText: { color: '#666', fontSize: 14, fontWeight: '500' },
+  notifyTextActive: { color: '#D48C70' },
+
+  saveButton: { backgroundColor: '#D48C70', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 16, borderRadius: 12, marginTop: 16, gap: 8 },
   saveButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
 });

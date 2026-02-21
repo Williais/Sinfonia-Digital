@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../../lib/supabase';
 import { profileService } from '../../../services/profile.service';
-import { AlertCircle, Plus, X, Save, Trash2, Edit } from 'lucide-react-native';
+import { AlertCircle, Plus, X, Save, Trash2, Edit, Bell, BellOff } from 'lucide-react-native';
 
 export default function MuralScreen() {
   const [avisos, setAvisos] = useState<any[]>([]);
@@ -15,6 +15,7 @@ export default function MuralScreen() {
   const [titulo, setTitulo] = useState('');
   const [conteudo, setConteudo] = useState('');
   const [prioridade, setPrioridade] = useState<'baixa' | 'media' | 'alta'>('baixa');
+  const [notify, setNotify] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -41,11 +42,13 @@ export default function MuralScreen() {
       setTitulo(aviso.title);
       setConteudo(aviso.content);
       setPrioridade(aviso.priority);
+      setNotify(false);
     } else {
       setEditId(null);
       setTitulo('');
       setConteudo('');
       setPrioridade('baixa');
+      setNotify(true);
     }
     setModalVisible(true);
   }
@@ -54,11 +57,19 @@ export default function MuralScreen() {
     if (!titulo || !conteudo) return Alert.alert("Erro", "Preencha título e conteúdo.");
     setSaving(true);
     try {
+      let recordId = editId;
+
       if (editId) {
         await supabase.from('notices').update({ title: titulo, content: conteudo, priority: prioridade }).eq('id', editId);
       } else {
-        await supabase.from('notices').insert({ title: titulo, content: conteudo, priority: prioridade });
+        const { data } = await supabase.from('notices').insert({ title: titulo, content: conteudo, priority: prioridade }).select().single();
+        if (data) recordId = data.id;
       }
+      
+      if (notify) {
+        console.log("FASE 3: Disparar notificação para o aviso ID", recordId);
+      }
+
       setModalVisible(false);
       carregarDados();
     } catch (e) {
@@ -158,6 +169,16 @@ export default function MuralScreen() {
             <Text style={styles.label}>Conteúdo</Text>
             <TextInput style={[styles.input, styles.textArea]} value={conteudo} onChangeText={setConteudo} multiline />
 
+            <TouchableOpacity 
+              style={[styles.notifyToggle, notify && styles.notifyToggleActive]} 
+              onPress={() => setNotify(!notify)}
+            >
+              {notify ? <Bell size={20} color="#D48C70" /> : <BellOff size={20} color="#666" />}
+              <Text style={[styles.notifyText, notify && styles.notifyTextActive]}>
+                Enviar notificação aos músicos
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
               {saving ? <ActivityIndicator color="#FFF" /> : <><Save size={20} color="#FFF" /><Text style={styles.saveText}>Salvar Aviso</Text></>}
             </TouchableOpacity>
@@ -194,6 +215,10 @@ const styles = StyleSheet.create({
   optMedia: { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
   optAlta: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
   optText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
+  notifyToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 20, padding: 12, borderRadius: 8, backgroundColor: '#0B0F19', borderWidth: 1, borderColor: '#333' },
+  notifyToggleActive: { borderColor: 'rgba(212, 140, 112, 0.4)', backgroundColor: 'rgba(212, 140, 112, 0.1)' },
+  notifyText: { color: '#666', fontSize: 14, fontWeight: '500' },
+  notifyTextActive: { color: '#D48C70' },
   saveBtn: { backgroundColor: '#D48C70', padding: 16, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 24 },
   saveText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
 });
