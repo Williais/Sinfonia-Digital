@@ -5,10 +5,9 @@ import {
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Slider from '@react-native-community/slider';
 import { acervoService, Musica } from '../../../services/acervo.service';
-import { playerService } from '../../../services/player.service'; // Seu serviço de player antigo
-import { profileService } from '../../../services/profile.service'; // Para checar admin
-import { PlayCircle, PauseCircle, FileText, ChevronLeft, Download, AlertCircle, Trash2, Music as MusicIcon } from 'lucide-react-native';
-import { supabase } from '../../../lib/supabase'; // Para deletar se necessário
+import { playerService } from '../../../services/player.service'; 
+import { profileService } from '../../../services/profile.service'; 
+import { PlayCircle, PauseCircle, FileText, ChevronLeft, Download, AlertCircle, Trash2 } from 'lucide-react-native';
 
 export default function MusicDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -17,19 +16,16 @@ export default function MusicDetailScreen() {
   const [musica, setMusica] = useState<Musica | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Estados do Player (Restaurados)
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0); 
   const [duration, setDuration] = useState(1); 
 
-  // Estado de Admin (Novo)
   const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     loadDetails();
   }, [id]);
 
-  // Parar música ao sair da tela
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -41,23 +37,20 @@ export default function MusicDetailScreen() {
 
   async function loadDetails() {
     try {
-      // 1. Checar Permissão Admin
       const profile = await profileService.getUserProfile();
       const isPowerUser = ['admin', 'maestro'].includes(profile.role) || profile.is_spalla;
       setCanEdit(isPowerUser);
 
-      // 2. Buscar Música (Usando o método otimizado ou o antigo, ambos funcionam)
       const encontrada = await acervoService.getMusicaById(id as string);
       if (encontrada) setMusica(encontrada);
       
     } catch (e) {
-      console.log(e);
+      console.error(e);
     } finally {
       setLoading(false);
     }
   }
 
-  // --- LÓGICA DO PLAYER (RESTAURADA) ---
   async function handlePlayPause() {
     if (!musica?.audioUrl) return Alert.alert("Ops", "Sem áudio disponível.");
 
@@ -87,25 +80,23 @@ export default function MusicDetailScreen() {
     return minutes + ":" + (Number(seconds) < 10 ? '0' : '') + seconds;
   };
 
-  // --- LÓGICA DE ADMIN (NOVA) ---
   async function handleDelete() {
     Alert.alert(
       "Excluir Música",
-      "Tem certeza? Isso removerá a música do acervo.",
+      "Tem certeza? Isso removerá a música e todos os seus arquivos.",
       [
         { text: "Cancelar", style: "cancel" },
         { 
           text: "Excluir", 
           style: "destructive", 
           onPress: async () => {
-            // Lógica simples de delete (se não tiver no service, deleta direto aqui)
-            // Idealmente: await acervoService.deleteMusica(id);
-            const { error } = await supabase.from('musicas').delete().eq('id', id);
-            if (!error) {
-                router.back();
-                Alert.alert("Sucesso", "Música removida.");
-            } else {
-                Alert.alert("Erro", "Falha ao excluir.");
+            try {
+               await acervoService.deleteMusica(id as string, musica?.audioPath, musica?.partiturasPaths);
+               Alert.alert("Sucesso", "Música removida.");
+               router.back();
+            } catch (error) {
+               console.error("Erro na tela de apagar:", error);
+               Alert.alert("Erro", "Falha ao excluir.");
             }
           } 
         }
@@ -120,7 +111,6 @@ export default function MusicDetailScreen() {
     <ScrollView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
       
-      {/* HEADER COM DELETE */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ChevronLeft size={24} color="#FFF" />
@@ -134,14 +124,14 @@ export default function MusicDetailScreen() {
         )}
       </View>
 
-      {/* PLAYER UI (ESTILO ANTIGO RESTAURADO) */}
       <View style={styles.playerSection}>
         <View style={styles.albumCover}>
-           <Text style={styles.albumInitial}>{musica.title.charAt(0)}</Text>
+           <Text style={styles.albumInitial}>{musica.title.charAt(0).toUpperCase()}</Text>
         </View>
 
         <Text style={styles.title}>{musica.title}</Text>
-        <Text style={styles.arranger}>{musica.composer} {musica.arranger ? `• Arr: ${musica.arranger}` : ''}</Text>
+
+        <Text style={styles.arranger}>{musica.arranger ? `Arr: ${musica.arranger}` : 'Arranjo desconhecido'}</Text>
 
         <View style={styles.progressContainer}>
             <Text style={styles.timeText}>{formatTime(position)}</Text>
@@ -161,11 +151,7 @@ export default function MusicDetailScreen() {
         </View>
 
         <TouchableOpacity onPress={handlePlayPause} style={styles.playButton}>
-          {isPlaying ? (
-            <PauseCircle size={80} color="#D48C70" />
-          ) : (
-            <PlayCircle size={80} color="#D48C70" />
-          )}
+          {isPlaying ? <PauseCircle size={80} color="#D48C70" /> : <PlayCircle size={80} color="#D48C70" />}
         </TouchableOpacity>
         
         <Text style={styles.statusText}>
@@ -173,7 +159,6 @@ export default function MusicDetailScreen() {
         </Text>
       </View>
 
-      {/* LISTA DE PARTITURAS */}
       <View style={styles.filesSection}>
         <Text style={styles.sectionTitle}>PARTITURAS DISPONÍVEIS</Text>
         
@@ -202,39 +187,49 @@ export default function MusicDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B0F19', padding: 20 },
   center: { flex: 1, backgroundColor: '#0B0F19', justifyContent: 'center', alignItems: 'center' },
-  
-  // Header ajustado para caber o botão de delete
   header: { marginTop: 40, marginBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   backButton: { flexDirection: 'row', alignItems: 'center' },
   backText: { color: '#FFF', fontSize: 16, marginLeft: 8 },
-
   playerSection: { alignItems: 'center', marginBottom: 40 },
-  albumCover: {
-    width: 200, height: 200, borderRadius: 20,
-    backgroundColor: '#1A1A1A',
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 24, borderWidth: 1, borderColor: '#333',
-    shadowColor: "#D48C70", shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10
-  },
+  albumCover: { width: 200, height: 200, borderRadius: 20, backgroundColor: '#1A1A1A', justifyContent: 'center', alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#333', shadowColor: "#D48C70", shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
   albumInitial: { fontSize: 80, color: '#333', fontWeight: 'bold' },
   title: { fontSize: 24, color: '#FFF', fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
   arranger: { fontSize: 16, color: '#888', fontStyle: 'italic', marginBottom: 24 },
   playButton: { marginBottom: 12 },
   statusText: { color: '#666', fontSize: 12 },
-  
-  progressContainer: {
-    flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 10, marginBottom: 20, gap: 10
-  },
+  progressContainer: { flexDirection: 'row', alignItems: 'center', width: '100%', paddingHorizontal: 10, marginBottom: 20, gap: 10 },
   timeText: { color: '#888', fontSize: 12, width: 40, textAlign: 'center' },
-
   filesSection: { flex: 1 },
   sectionTitle: { color: '#666', fontSize: 12, fontWeight: 'bold', marginBottom: 16, letterSpacing: 1 },
-  fileCard: {
-    backgroundColor: '#151A26', padding: 16, borderRadius: 12,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 12, borderWidth: 1, borderColor: '#222'
-  },
-  fileIcon: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#D48C70', justifyContent: 'center', alignItems: 'center' },
-  fileName: { color: '#FFF', fontSize: 16, fontWeight: '500' },
-  emptyFiles: { padding: 30, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#333', borderRadius: 12 }
+  fileCard: { 
+    backgroundColor: '#151A26', 
+    padding: 16, 
+    borderRadius: 12, 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 12, 
+    borderWidth: 1, 
+    borderColor: '#222' },
+  fileIcon: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 8, 
+    backgroundColor: '#D48C70', 
+    justifyContent: 'center', 
+    alignItems: 'center' },
+  
+  fileName: { 
+    color: '#FFF', 
+    fontSize: 16, 
+    fontWeight: '500' },
+  
+  emptyFiles: { 
+    padding: 30, 
+    alignItems: 'center', 
+    borderStyle: 'dashed', 
+    borderWidth: 1, 
+    borderColor: '#333', 
+    borderRadius: 12 
+  }
 });

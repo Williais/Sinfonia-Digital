@@ -1,12 +1,9 @@
 import { supabaseAcervo } from "../lib/supabase-acervo";
-import { File } from 'expo-file-system';
 
 export interface Musica {
   id: number;
   title: string;
   arranger: string;
-  composer: string;
-  category: string;
   audioPath?: string;
   partiturasPaths?: Record<string, string>;
   audioUrl?: string;
@@ -20,7 +17,6 @@ function slugify(text: string) {
     .replace(/\-\-+/g, '-')
     .replace(/^-+/, '').replace(/-+$/, '');
 }
-
 
 class AcervoService {
 
@@ -54,8 +50,6 @@ class AcervoService {
           id: musica.id,
           title: musica.title,
           arranger: musica.arranger,
-          composer: musica.composer || 'Desconhecido',
-          category: musica.category || 'popular',
           audioPath: musica.audioPath,
           partiturasPaths: musica.partiturasPaths,
           audioUrl: audioUrl,
@@ -63,7 +57,7 @@ class AcervoService {
         } as Musica;
       });
     } catch (error) {
-      console.log('Erro ao buscar:', error);
+      console.error('Erro getAllMusicas:', error);
       return [];
     }
   }
@@ -73,68 +67,107 @@ class AcervoService {
     return musicas.find(m => String(m.id) === String(id)) || null;
   }
 
+  async deleteMusica(id: string, audioPath?: string, partiturasPaths?: Record<string, string>) {
+    try {
+        console.log(`[DELETE] Excluindo música ID: ${id}`);
+
+        let pathsToDelete: string[] = [];
+        if (audioPath) pathsToDelete.push(audioPath);
+        if (partiturasPaths) {
+            pathsToDelete = [...pathsToDelete, ...Object.values(partiturasPaths)];
+        }
+        
+        if (pathsToDelete.length > 0) {
+            console.log(`[DELETE] Apagando ${pathsToDelete.length} arquivos do storage...`);
+            const { error: storageError } = await supabaseAcervo.storage.from('arquivos').remove(pathsToDelete);
+            if (storageError) console.warn("Erro ao apagar arquivos:", storageError);
+        }
+
+        // 2. Apaga do Banco de Dados
+        const { error: dbError } = await supabaseAcervo.from('musicas').delete().eq('id', id);
+        if (dbError) throw dbError;
+
+        console.log("[DELETE] Concluído!");
+    } catch (error) {
+        console.error("[DELETE ERRO]:", error);
+        throw error;
+    }
+  }
+
   async uploadFileToStorage(uri: string, path: string, type: string) {
     try {
-      const file = new File(uri);
-      const bytes = await file.bytes();
+      console.log(`[UPLOAD] Iniciando upload via FormData... Path: ${path}`);
 
-      const { error } = await supabaseAcervo.storage
+      const formData = new FormData();
+      formData.append('file', {
+        uri: uri,
+        name: path.split('/').pop() || 'upload_file',
+        type: type,
+      } as any);
+
+      const { data, error } = await supabaseAcervo.storage
         .from('arquivos')
-        .upload(path, bytes, {
-          contentType: type,
-          upsert: true
+        .upload(path, formData, {
+           upsert: true
         });
 
       if (error) {
-        console.error("Erro detalhado do Supabase Storage:", error);
+        console.error("[UPLOAD ERRO SUPABASE]:", error);
         throw error;
       }
+      
+      console.log(`[UPLOAD SUCESSO]: ${path}`);
       return path;
     } catch (error) {
-      console.error("Erro no upload:", error);
+      console.error("[UPLOAD ERRO FATAL]:", error);
       throw error;
     }
   }
 
   async addMusica(
-    dados: { title: string, composer: string, arranger: string, category: string },
+    dados: { title: string, arranger: string },
     audioFile: any,
     pdfFiles: any[]
   ) {
-    const sanitizedTitle = slugify(dados.title);
-    let audioPath = null;
-    let partiturasPaths: Record<string, string> = {};
+    try {
+      console.log("[ADD MUSICA] Iniciando...");
+      const sanitizedTitle = slugify(dados.title);
+      let audioPath = null;
+      let partiturasPaths: Record<string, string> = {};
 
-    if (audioFile) {
-      const fileName = audioFile.name || `audio-${Date.now()}.mp3`;
-      const path = `audio/${Date.now()}_${slugify(fileName)}`;
-      await this.uploadFileToStorage(audioFile.uri, path, 'audio/mpeg');
-      audioPath = path;
-    }
-
-    if (pdfFiles && pdfFiles.length > 0) {
-      for (const file of pdfFiles) {
-        const fileName = file.name || `partitura-${Date.now()}.pdf`;
-        const instrumento = fileName.replace(/\.pdf$/i, '').trim();
-        const path = `partituras/${sanitizedTitle}/${slugify(fileName)}`;
-
-        await this.uploadFileToStorage(file.uri, path, 'application/pdf');
-        partiturasPaths[instrumento] = path;
+      if (audioFile) {
+        const fileName = audioFile.name || `audio-${Date.now()}.mp3`;
+        const path = `audio/${Date.now()}_${slugify(fileName)}`;
+        await this.uploadFileToStorage(audioFile.uri, path, audioFile.mimeType || 'audio/mpeg');
+        audioPath = path;
       }
+
+      if (pdfFiles && pdfFiles.length > 0) {
+        for (const file of pdfFiles) {
+          const fileName = file.name || `partitura-${Date.now()}.pdf`;
+          const instrumento = fileName.replace(/\.pdf$/i, '').trim();
+          const path = `partituras/${sanitizedTitle}/${slugify(fileName)}`;
+
+          await this.uploadFileToStorage(file.uri, path, file.mimeType || 'application/pdf');
+          partiturasPaths[instrumento] = path;
+        }
+      }
+
+      const { error } = await supabaseAcervo
+        .from('musicas')
+        .insert({
+          title: dados.title,
+          arranger: dados.arranger,
+          audioPath: audioPath,
+          partiturasPaths: partiturasPaths
+        });
+
+      if (error) throw error;
+      console.log("[ADD MUSICA] Concluído!");
+    } catch (error) {
+      console.error("[ADD MUSICA ERRO]:", error);
+      throw error;
     }
-
-    const { error } = await supabaseAcervo
-      .from('musicas')
-      .insert({
-        title: dados.title,
-        composer: dados.composer,
-        arranger: dados.arranger,
-        category: dados.category,
-        audioPath: audioPath,
-        partiturasPaths: partiturasPaths
-      });
-
-    if (error) throw error;
   }
 }
 
