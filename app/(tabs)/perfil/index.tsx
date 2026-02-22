@@ -1,4 +1,5 @@
 import { useFocusEffect, useRouter } from "expo-router";
+import { Colors } from "../../../constants/Colors";
 import {
   Award,
   BookOpen,
@@ -10,6 +11,7 @@ import {
   ShieldCheck,
   Star,
   Timer,
+  Users,
   Zap,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
@@ -69,6 +71,7 @@ export default function ProfileScreen() {
         .eq("user_id", userProfile.id);
       setBadges(userBadges || []);
     } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -167,6 +170,23 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      <View style={{ paddingHorizontal: 20 }}>
+        {(profile?.role === "admin" || profile?.role === "maestro") && (
+          <TouchableOpacity
+            style={styles.adminButton}
+            onPress={() => router.push("/musicos")}
+          >
+            <Users size={24} color={Colors.dark.primary} />
+            <View style={styles.adminButtonTextContainer}>
+              <Text style={styles.adminButtonTitle}>Gestão de Músicos</Text>
+              <Text style={styles.adminButtonSub}>
+                Ver todos os integrantes cadastrados
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      </View>
+
       <View style={styles.statsGrid}>
         <View style={styles.statBox}>
           <Text style={styles.statNumber}>{stats?.concerts_attended || 0}</Text>
@@ -213,7 +233,7 @@ export default function ProfileScreen() {
       <Text style={styles.sectionTitle}>RANKING DE FREQUÊNCIA (MÊS)</Text>
       <View style={styles.rankingCard}>
         {ranking.map((item, index) => (
-          <View key={item.id}>
+          <View key={`rank-${index}`}>
             <View style={styles.rankingRow}>
               <Text
                 style={[styles.rankPos, index === 2 && { color: "#CD7F32" }]}
@@ -357,4 +377,27 @@ const styles = StyleSheet.create({
   rankName: { flex: 1, color: "#FFF", fontSize: 14 },
   rankValue: { color: "#D48C70", fontWeight: "bold" },
   divider: { height: 1, backgroundColor: "#222" },
+  adminButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#111",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.dark.primary,
+    marginBottom: 20,
+  },
+  adminButtonTextContainer: {
+    marginLeft: 16,
+  },
+  adminButtonTitle: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  adminButtonSub: {
+    color: "#888",
+    fontSize: 12,
+    marginTop: 2,
+  },
 });
