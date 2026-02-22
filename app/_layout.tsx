@@ -8,7 +8,7 @@ import { notificationService } from "../services/notification.service";
 
 export default function RootLayout() {
   const [session, setSession] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(undefined); // undefined = carregando
+  const [profile, setProfile] = useState<any>(undefined); 
   const [isReady, setIsReady] = useState(false);
   
   const segments = useSegments();
@@ -36,9 +36,12 @@ export default function RootLayout() {
         .eq('id', session.user.id)
         .single()
         .then(({ data }) => {
-          setProfile(data || null);
+          setProfile(data || null); 
           setIsReady(true);
-          notificationService.registerForPushNotificationsAsync(session.user.id);
+
+          try {
+            notificationService.registerForPushNotificationsAsync(session.user.id);
+          } catch(e) {}
         });
     } else {
       setProfile(undefined);
@@ -46,11 +49,10 @@ export default function RootLayout() {
   }, [session]);
 
   useEffect(() => {
-
     if (!isReady || profile === undefined) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const inOnboarding = segments[1] === 'onboarding' || segments[0] === 'onboarding';
+    const inOnboarding = segments.includes('onboarding');
 
     if (!session) {
       if (!inAuthGroup) {
@@ -66,18 +68,17 @@ export default function RootLayout() {
         profile.nickname.trim() === '';
 
       if (precisaOnboarding) {
-
         if (!inOnboarding) {
           router.replace('/(auth)/onboarding');
         }
       } else {
-
         if (inAuthGroup || inOnboarding) {
           router.replace('/(tabs)');
         }
       }
     }
-  }, [session, profile, segments, isReady]);
+
+  }, [session, profile, isReady]); 
 
   if (!isReady) return null;
 
