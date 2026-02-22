@@ -1,8 +1,8 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
-import { Colors } from '../../constants/Colors';
-import { Home, Calendar, BookOpen, Megaphone, User } from 'lucide-react-native';
+import { Tabs } from "expo-router";
+import { BookOpen, Calendar, Home, Megaphone, User } from "lucide-react-native";
+import React from "react";
+import { Platform } from "react-native";
+import { Colors } from "../../constants/Colors";
 
 export default function TabLayout() {
   return (
@@ -12,8 +12,8 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.dark.card,
           borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 85 : 95,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+          height: Platform.OS === "ios" ? 85 : 95,
+          paddingBottom: Platform.OS === "ios" ? 30 : 10,
           paddingTop: 10,
           elevation: 0,
         },
@@ -21,23 +21,23 @@ export default function TabLayout() {
         tabBarInactiveTintColor: Colors.dark.textSecondary,
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '500',
+          fontWeight: "500",
           marginTop: 4,
-        }
-      }}>
-      
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Início',
+          title: "Início",
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
-      
+
       <Tabs.Screen
         name="agenda"
         options={{
-          title: 'Agenda',
+          title: "Agenda",
           tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
         }}
       />
@@ -45,7 +45,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="acervo"
         options={{
-          title: 'Acervo',
+          title: "Acervo",
           tabBarIcon: ({ color }) => <BookOpen size={24} color={color} />,
         }}
       />
@@ -53,7 +53,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="mural"
         options={{
-          title: 'Mural',
+          title: "Mural",
           tabBarIcon: ({ color }) => <Megaphone size={24} color={color} />,
         }}
       />
@@ -61,7 +61,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="perfil"
         options={{
-          title: 'Perfil',
+          title: "Perfil",
           tabBarIcon: ({ color }) => <User size={24} color={color} />,
         }}
       />

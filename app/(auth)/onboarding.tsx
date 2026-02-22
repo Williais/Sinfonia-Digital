@@ -1,22 +1,30 @@
-import React, { useState, useEffect } from "react";
+import { useRouter } from "expo-router";
+import {
+  AlignLeft,
+  Calendar,
+  CalendarDays,
+  CheckCircle,
+  Instagram,
+  Music,
+  User,
+} from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ScrollView,
-  Switch,
-  Image,
-  Platform,
-  KeyboardAvoidingView
 } from "react-native";
 import { Colors } from "../../constants/Colors";
 import { supabase } from "../../lib/supabase";
-import { useRouter } from "expo-router";
-import { User, Music, Calendar, Instagram, AlignLeft, CheckCircle, CalendarDays } from "lucide-react-native";
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -25,7 +33,7 @@ export default function OnboardingScreen() {
 
   const [fullName, setFullName] = useState("");
   const [nickname, setNickname] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState(""); 
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [instrument, setInstrument] = useState("");
   const [section, setSection] = useState("");
   const [yearJoined, setYearJoined] = useState("");
@@ -40,8 +48,8 @@ export default function OnboardingScreen() {
       if (user) {
         setUserId(user.id);
         setFullName(user.user_metadata.full_name || "");
-        setAvatarUrl(user.user_metadata.avatar_url || ""); 
-        setNickname(user.user_metadata.full_name?.split(' ')[0] || "");
+        setAvatarUrl(user.user_metadata.avatar_url || "");
+        setNickname(user.user_metadata.full_name?.split(" ")[0] || "");
       } else {
         router.replace("/(auth)/login" as any);
       }
@@ -51,51 +59,51 @@ export default function OnboardingScreen() {
   // Máscara de Data
   const dateMask = (value: string) => {
     return value
-      .replace(/\D/g, '')
-      .replace(/(\d{2})(\d)/, '$1/$2')
-      .replace(/(\d{2})(\d)/, '$1/$2')
-      .replace(/(\d{4})\d+?$/, '$1');
+      .replace(/\D/g, "")
+      .replace(/(\d{2})(\d)/, "$1/$2")
+      .replace(/(\d{2})(\d)/, "$1/$2")
+      .replace(/(\d{4})\d+?$/, "$1");
   };
 
   const convertDateToISO = (dateStr: string) => {
     if (dateStr.length < 10) return null;
-    const [day, month, year] = dateStr.split('/');
+    const [day, month, year] = dateStr.split("/");
     return `${year}-${month}-${day}`;
   };
 
   async function handleSaveProfile() {
     if (!fullName || !nickname || !instrument || !section || !yearJoined) {
-      return Alert.alert("Campos Obrigatórios", "Por favor, preencha Nome, Apelido, Instrumento, Naipe e Ano de Entrada.");
+      return Alert.alert(
+        "Campos Obrigatórios",
+        "Por favor, preencha Nome, Apelido, Instrumento, Naipe e Ano de Entrada.",
+      );
     }
 
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: userId,
-          full_name: fullName,
-          nickname: nickname,
-          avatar_url: avatarUrl,
-          instrument: instrument,
-          section: section,
-          year_joined: yearJoined,
-          instagram_handle: instagram.replace('@', ''),
-          bio: bio,
-          is_section_leader: false, 
-          is_spalla: false,
-          instrument_ownership: isInstrumentOwn ? 'proprio' : 'cefec',
-          role: 'musico',
-          status: 'ativo',
-          birth_date: convertDateToISO(birthDate),
-          updated_at: new Date(),
-        });
+      const { error } = await supabase.from("profiles").upsert({
+        id: userId,
+        full_name: fullName,
+        nickname: nickname,
+        avatar_url: avatarUrl,
+        instrument: instrument,
+        section: section,
+        year_joined: yearJoined,
+        instagram_handle: instagram.replace("@", ""),
+        bio: bio,
+        is_section_leader: false,
+        is_spalla: false,
+        instrument_ownership: isInstrumentOwn ? "proprio" : "cefec",
+        role: "musico",
+        status: "ativo",
+        birth_date: convertDateToISO(birthDate),
+        updated_at: new Date(),
+      });
 
       if (error) throw error;
 
-      router.replace('/(tabs)' as any);
-
+      router.replace("/(tabs)" as any);
     } catch (error: any) {
       Alert.alert("Erro ao Salvar", error.message);
     } finally {
@@ -104,12 +112,11 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
         <View style={styles.header}>
           <Text style={styles.title}>Bem-vindo!</Text>
           <Text style={styles.subtitle}>Complete seu perfil de Músico</Text>
@@ -127,12 +134,11 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.formCard}>
-
           <Text style={styles.sectionTitle}>QUEM É VOCÊ</Text>
-          
+
           <View style={styles.inputGroup}>
             <User size={20} color="#666" style={styles.icon} />
-            <TextInput 
+            <TextInput
               placeholder="Nome Completo"
               placeholderTextColor="#666"
               style={styles.input}
@@ -143,7 +149,7 @@ export default function OnboardingScreen() {
 
           <View style={styles.inputGroup}>
             <User size={20} color="#666" style={styles.icon} />
-            <TextInput 
+            <TextInput
               placeholder="Apelido (Como quer ser chamado)"
               placeholderTextColor="#666"
               style={styles.input}
@@ -154,7 +160,7 @@ export default function OnboardingScreen() {
 
           <View style={styles.inputGroup}>
             <Instagram size={20} color="#666" style={styles.icon} />
-            <TextInput 
+            <TextInput
               placeholder="Instagram (ex: @willian_violin)"
               placeholderTextColor="#666"
               style={styles.input}
@@ -166,7 +172,7 @@ export default function OnboardingScreen() {
 
           <View style={styles.inputGroup}>
             <AlignLeft size={20} color="#666" style={styles.icon} />
-            <TextInput 
+            <TextInput
               placeholder="Bio / Status (Uma frase)"
               placeholderTextColor="#666"
               style={styles.input}
@@ -178,7 +184,7 @@ export default function OnboardingScreen() {
 
           <View style={styles.inputGroup}>
             <CalendarDays size={20} color="#666" style={styles.icon} />
-            <TextInput 
+            <TextInput
               placeholder="Data de Nascimento (DD/MM/AAAA)"
               placeholderTextColor="#666"
               style={styles.input}
@@ -189,12 +195,14 @@ export default function OnboardingScreen() {
             />
           </View>
 
-          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>VIDA NA ORQUESTRA</Text>
+          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
+            VIDA NA ORQUESTRA
+          </Text>
 
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 2, marginRight: 10 }]}>
               <Music size={20} color="#666" style={styles.icon} />
-              <TextInput 
+              <TextInput
                 placeholder="Instrumento"
                 placeholderTextColor="#666"
                 style={styles.input}
@@ -204,7 +212,7 @@ export default function OnboardingScreen() {
             </View>
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <Calendar size={20} color="#666" style={styles.icon} />
-              <TextInput 
+              <TextInput
                 placeholder="Ano"
                 placeholderTextColor="#666"
                 style={styles.input}
@@ -217,7 +225,7 @@ export default function OnboardingScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <TextInput 
+            <TextInput
               placeholder="Naipe (Ex: Violas, Metais, Percussão)"
               placeholderTextColor="#666"
               style={[styles.input, { paddingLeft: 10 }]}
@@ -231,18 +239,32 @@ export default function OnboardingScreen() {
           <View style={styles.switchRow}>
             <Text style={styles.switchLabel}>O instrumento é próprio?</Text>
             <View style={styles.toggleContainer}>
-              <Text style={[styles.toggleText, !isInstrumentOwn && styles.activeToggle]}>CEFEC</Text>
-              <Switch 
-                value={isInstrumentOwn} 
+              <Text
+                style={[
+                  styles.toggleText,
+                  !isInstrumentOwn && styles.activeToggle,
+                ]}
+              >
+                CEFEC
+              </Text>
+              <Switch
+                value={isInstrumentOwn}
                 onValueChange={setIsInstrumentOwn}
                 trackColor={{ false: "#333", true: Colors.dark.primary }}
                 thumbColor={"#FFF"}
               />
-              <Text style={[styles.toggleText, isInstrumentOwn && styles.activeToggle]}>MEU</Text>
+              <Text
+                style={[
+                  styles.toggleText,
+                  isInstrumentOwn && styles.activeToggle,
+                ]}
+              >
+                MEU
+              </Text>
             </View>
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.submitButton}
             onPress={handleSaveProfile}
             disabled={loading}
@@ -256,7 +278,6 @@ export default function OnboardingScreen() {
               </>
             )}
           </TouchableOpacity>
-
         </View>
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -274,13 +295,13 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
   },
   title: {
     fontSize: 28,
-    color: '#FFF',
-    fontWeight: 'bold',
+    color: "#FFF",
+    fontWeight: "bold",
   },
   subtitle: {
     fontSize: 16,
@@ -288,7 +309,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   avatarContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 24,
   },
   avatarImage: {
@@ -302,14 +323,14 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#222',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#222",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: '#333',
+    borderColor: "#333",
   },
   avatarText: {
-    color: '#666',
+    color: "#666",
     fontSize: 12,
     marginTop: 8,
   },
@@ -318,75 +339,75 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#2A303C',
+    borderColor: "#2A303C",
   },
   sectionTitle: {
     color: Colors.dark.primary,
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     letterSpacing: 2,
     marginBottom: 16,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   inputGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0A0A0A',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0A0A0A",
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: "#333",
     borderRadius: 12,
     marginBottom: 12,
     height: 50,
     paddingHorizontal: 12,
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   icon: {
     marginRight: 10,
   },
   input: {
     flex: 1,
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 14,
   },
   switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
     paddingVertical: 4,
   },
   switchLabel: {
-    color: '#DDD',
+    color: "#DDD",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   toggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   toggleText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: '#666',
+    fontWeight: "bold",
+    color: "#666",
   },
   activeToggle: {
-    color: '#FFF',
+    color: "#FFF",
   },
   divider: {
     height: 1,
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     marginVertical: 12,
   },
   submitButton: {
     backgroundColor: Colors.dark.primary,
     height: 56,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
     marginTop: 24,
     shadowColor: Colors.dark.primary,
     shadowOffset: { width: 0, height: 4 },
@@ -395,8 +416,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   buttonText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });

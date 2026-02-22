@@ -1,7 +1,7 @@
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
-import { Platform, LogBox } from 'react-native';
+import { LogBox, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
@@ -19,7 +19,6 @@ Notifications.setNotificationHandler({
 class NotificationService {
   async registerForPushNotificationsAsync(userId: string) {
     let token;
-
     const isExpoGo = Constants.appOwnership === 'expo';
 
     if (Platform.OS === 'android') {
@@ -33,41 +32,35 @@ class NotificationService {
 
     if (Device.isDevice) {
       if (isExpoGo && Platform.OS === 'android') {
-        console.log('Ambiente Expo Go detectado. Pulando registro de Push para evitar erros.');
         return null; 
       }
 
       try {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
-        
         if (existingStatus !== 'granted') {
           const { status } = await Notifications.requestPermissionsAsync();
           finalStatus = status;
         }
-        
-        if (finalStatus !== 'granted') {
-          return null;
-        }
+        if (finalStatus !== 'granted') return null;
 
         const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-        
-        token = (await Notifications.getExpoPushTokenAsync({
-          projectId: projectId,
-        })).data;
+
+        try {
+          token = (await Notifications.getExpoPushTokenAsync({ projectId: projectId })).data;
+        } catch (pushError) {
+          console.log("Aviso: Token push pulado no ambiente Dev Client sem Firebase.");
+          return null; 
+        }
         
       } catch (e) {
-        console.log("Erro ao gerar token:", e);
+        console.log("Erro de permissão:", e);
       }
     }
 
     if (token && userId) {
-      await supabase
-        .from('profiles')
-        .update({ push_token: token })
-        .eq('id', userId);
+      await supabase.from('profiles').update({ push_token: token }).eq('id', userId);
     }
-
     return token;
   }
 

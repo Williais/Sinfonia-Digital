@@ -98,7 +98,7 @@ class ProfileService {
       .eq('status', 'confirmado');
     
     const frequencia = totalEventos && totalEventos > 0 
-      ? Math.round((minhasPresencas || 0) / totalEventos * 100) 
+      ? Math.min(100, Math.round(((minhasPresencas || 0) / totalEventos) * 100)) 
       : 100;
 
     return {

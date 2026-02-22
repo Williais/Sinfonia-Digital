@@ -1,10 +1,22 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar
-} from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { acervoService, Musica } from '../../../services/acervo.service';
-import { PlayCircle, ChevronRight, Library, Music, Wind } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from "expo-router";
+import {
+  ChevronRight,
+  Library,
+  Music,
+  PlayCircle,
+  Wind,
+} from "lucide-react-native";
+import React, { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { acervoService, Musica } from "../../../services/acervo.service";
 
 export default function AcervoDashboard() {
   const router = useRouter();
@@ -14,7 +26,7 @@ export default function AcervoDashboard() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, []),
   );
 
   async function loadData() {
@@ -32,9 +44,11 @@ export default function AcervoDashboard() {
   }
 
   const CategoryCard = ({ title, count, color, icon: Icon, filter }: any) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.catCard, { backgroundColor: color }]}
-      onPress={() => router.push({ pathname: '/acervo/lista', params: { category: filter } })}
+      onPress={() =>
+        router.push({ pathname: "/acervo/lista", params: { category: filter } })
+      }
     >
       <View style={styles.catIconBox}>
         <Icon size={24} color="#FFF" />
@@ -49,114 +63,153 @@ export default function AcervoDashboard() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0F19" />
-      
+
       <View style={styles.header}>
         <Text style={styles.pageTitle}>Acervo Digital</Text>
-        <TouchableOpacity style={styles.searchBar} onPress={() => router.push({ pathname: '/acervo/lista', params: { category: 'all' } })}>
-           <Text style={styles.searchText}>Buscar obras, arranjadores...</Text>
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() =>
+            router.push({
+              pathname: "/acervo/lista",
+              params: { category: "all" },
+            })
+          }
+        >
+          <Text style={styles.searchText}>Buscar obras, arranjadores...</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.grid}>
-        <CategoryCard 
-          title="Cordas" 
-          count="Violinos, Cellos..." 
+        <CategoryCard
+          title="Cordas"
+          count="Violinos, Cellos..."
           color="rgba(59, 130, 246, 0.15)"
-          icon={Music} 
+          icon={Music}
           filter="cordas"
         />
-        <CategoryCard 
-          title="Sopros" 
-          count="Flautas, Metais..." 
+        <CategoryCard
+          title="Sopros"
+          count="Flautas, Metais..."
           color="rgba(16, 185, 129, 0.15)"
-          icon={Wind} 
+          icon={Wind}
           filter="sopros"
         />
-        <CategoryCard 
-          title="Percussão" 
-          count="Bateria, Tímpanos..." 
+        <CategoryCard
+          title="Percussão"
+          count="Bateria, Tímpanos..."
           color="rgba(239, 68, 68, 0.15)"
-          icon={Music} 
+          icon={Music}
           filter="percussão"
         />
-        <CategoryCard 
-          title="Acervo Completo" 
-          count="Ver tudo" 
+        <CategoryCard
+          title="Acervo Completo"
+          count="Ver tudo"
           color="rgba(212, 140, 112, 0.15)"
-          icon={Library} 
+          icon={Library}
           filter="all"
         />
       </View>
 
       <Text style={styles.sectionTitle}>ADICIONADOS RECENTEMENTE</Text>
-      
+
       {loading ? (
-        <ActivityIndicator color="#D48C70" style={{marginTop: 20}} />
+        <ActivityIndicator color="#D48C70" style={{ marginTop: 20 }} />
       ) : (
         <View style={styles.recentList}>
           {recentes.length > 0 ? (
             recentes.map((item) => (
-              <TouchableOpacity 
-                key={item.id} 
+              <TouchableOpacity
+                key={item.id}
                 style={styles.recentItem}
                 onPress={() => router.push(`/acervo/${item.id}`)}
               >
                 <View style={styles.recentLeft}>
-                   <View style={styles.playIconContainer}>
-                     <PlayCircle size={20} color="#9CA3AF" />
-                   </View>
-                   <View>
-                     <Text style={styles.recentTitle}>{item.title}</Text>
-                     <Text style={styles.recentSubtitle}>{item.arranger || 'Arranjo desconhecido'}</Text>
-                   </View>
+                  <View style={styles.playIconContainer}>
+                    <PlayCircle size={20} color="#9CA3AF" />
+                  </View>
+                  <View>
+                    <Text style={styles.recentTitle}>{item.title}</Text>
+                    <Text style={styles.recentSubtitle}>
+                      {item.arranger || "Arranjo desconhecido"}
+                    </Text>
+                  </View>
                 </View>
                 <ChevronRight size={16} color="#4B5563" />
               </TouchableOpacity>
             ))
           ) : (
-            <Text style={{color: '#666', textAlign: 'center', marginTop: 20}}>Nenhuma música no acervo ainda.</Text>
+            <Text style={{ color: "#666", textAlign: "center", marginTop: 20 }}>
+              Nenhuma música no acervo ainda.
+            </Text>
           )}
         </View>
       )}
 
-      <View style={{height: 100}} />
+      <View style={{ height: 100 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B0F19', paddingHorizontal: 20 },
+  container: { flex: 1, backgroundColor: "#0B0F19", paddingHorizontal: 20 },
   header: { marginTop: 60, marginBottom: 24 },
-  pageTitle: { fontSize: 28, fontWeight: 'bold', color: '#FFF', marginBottom: 16 },
-  
-  searchBar: {
-    backgroundColor: '#151A26', borderRadius: 12, padding: 16,
-    borderWidth: 1, borderColor: '#222'
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#FFF",
+    marginBottom: 16,
   },
-  searchText: { color: '#666', fontSize: 16 },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 32 },
+  searchBar: {
+    backgroundColor: "#151A26",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#222",
+  },
+  searchText: { color: "#666", fontSize: 16 },
+
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 32 },
   catCard: {
-    width: '48%', padding: 16, borderRadius: 16,
-    height: 110, justifyContent: 'space-between',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)'
+    width: "48%",
+    padding: 16,
+    borderRadius: 16,
+    height: 110,
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
   },
   catIconBox: { width: 32, height: 32 },
-  catTitle: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  catCount: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
+  catTitle: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
+  catCount: { color: "rgba(255,255,255,0.5)", fontSize: 12 },
 
-  sectionTitle: { color: '#666', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, marginBottom: 16 },
+  sectionTitle: {
+    color: "#666",
+    fontSize: 12,
+    fontWeight: "bold",
+    letterSpacing: 1,
+    marginBottom: 16,
+  },
   recentList: { gap: 12 },
   recentItem: {
-    backgroundColor: '#151A26', borderRadius: 16, padding: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)'
+    backgroundColor: "#151A26",
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
   },
-  recentLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  recentLeft: { flexDirection: "row", alignItems: "center", gap: 16 },
   playIconContainer: {
-    width: 40, height: 40, borderRadius: 8, backgroundColor: '#1E2433',
-    justifyContent: 'center', alignItems: 'center'
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: "#1E2433",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  recentTitle: { color: '#FFF', fontSize: 14, fontWeight: '500' },
-  recentSubtitle: { color: '#6B7280', fontSize: 12 }
+  recentTitle: { color: "#FFF", fontSize: 14, fontWeight: "500" },
+  recentSubtitle: { color: "#6B7280", fontSize: 12 },
 });

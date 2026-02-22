@@ -1,15 +1,12 @@
-import { supabase } from "../lib/supabase";
 import * as Linking from 'expo-linking';
+import { supabase } from "../lib/supabase";
 
 class AuthService{
-    //vou criar o metodo que fará o usuario ir para o Google
 
     async loginGoogle(){
-
         try{
-            const redirectUrl = Linking.createURL("/google-auth");
+            const redirectUrl = Linking.createURL("");
 
-            // pedindo pro Supabase o link do Google
             const {data, error} = await supabase.auth.signInWithOAuth({
                 provider: "google",
                 options: {
@@ -20,7 +17,6 @@ class AuthService{
 
             if(error) throw error
 
-            // retornando os dados para a tela. 
             return {
                 url: data?.url,
                 redirectUrl: redirectUrl
@@ -33,24 +29,21 @@ class AuthService{
 
     async criarSessao(url:string){
         try {
-                // aq ele vai pegar o que vem depois do # ou ?
+
               const params = url.split("#")[1] || url.split("?")[1];
 
-              if (!params) return; //se não tiver parametros, falhou
-        
-              //transformando em dados úteis
+              if (!params) return;
               const searchParams = new URLSearchParams(params);
               const access_token = searchParams.get("access_token");
               const refresh_token = searchParams.get("refresh_token");
-        
-              // achando os tokens, ele vai entregar pro Supabase
+
               if (access_token && refresh_token) {
                 const { error } = await supabase.auth.setSession({
                   access_token,
                   refresh_token,
                 });
                 if (error) throw error;
-                return true; // criou a sessão
+                return true;
               }
             } catch (error) {
               console.log("Erro ao processar URL:", error);

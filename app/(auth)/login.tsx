@@ -1,8 +1,7 @@
-import * as Linking from "expo-linking"
-import { useRouter } from "expo-router"
-import * as WebBrowser from "expo-web-browser"
-import { ArrowRight, Chrome, Music } from "lucide-react-native"
-import React, { useEffect, useRef, useState } from "react"
+import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { ArrowRight, Chrome, Music } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,10 +11,10 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from "react-native"
-import { Colors } from "../../constants/Colors"
-import { supabase } from "../../lib/supabase"
-import { authService } from "../../services/auth.service"
+} from "react-native";
+import { Colors } from "../../constants/Colors";
+import { supabase } from "../../lib/supabase";
+import { authService } from "../../services/auth.service";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -46,22 +45,19 @@ export default function LoginScreen() {
   async function handleGoogleLogin() {
     setLoading(true);
     try {
-      const response = await authService.loginGoogle()
+      const response = await authService.loginGoogle();
 
       if (response?.url) {
         const result = await WebBrowser.openAuthSessionAsync(
           response.url,
-          response.redirectUrl
+          response.redirectUrl,
         );
 
         if (result.type === "success" && result.url) {
-          const deuBom = await authService.criarSessao(result.url)
+          const deuBom = await authService.criarSessao(result.url);
 
-          if (deuBom) {
-            checkProfileAndRedirect();
-          } else {
-            Alert.alert("Erro", "Não foi possível conectar sua conta.");
-            checkProfileAndRedirect();
+          if (!deuBom) {
+            Alert.alert("Erro", "Não foi possível conectar sua conta.")
           }
         }
       }
@@ -70,29 +66,6 @@ export default function LoginScreen() {
         Alert.alert("Erro", error.message);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function checkProfileAndRedirect() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      setTimeout(checkProfileAndRedirect, 1000);
-      return;
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name, instrument")
-      .eq("id", session.user.id)
-      .single();
-
-    if (profile && profile.full_name && profile.instrument) {
-      router.replace("/(tabs)" as any);
-    } else {
-      router.replace("/(auth)/onboarding" as any);
     }
   }
 
