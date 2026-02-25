@@ -1,10 +1,8 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { LogBox, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
-
-LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -17,9 +15,9 @@ Notifications.setNotificationHandler({
 });
 
 class NotificationService {
+
   async registerForPushNotificationsAsync(userId: string) {
     let token;
-    const isExpoGo = Constants.appOwnership === 'expo';
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
@@ -31,49 +29,86 @@ class NotificationService {
     }
 
     if (Device.isDevice) {
-      if (isExpoGo && Platform.OS === 'android') {
-        return null; 
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
       }
+      
+      if (finalStatus !== 'granted') {
+        return null;
+      }
+
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ??
+        Constants?.easConfig?.projectId;
 
       try {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-        if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-        if (finalStatus !== 'granted') return null;
-
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-
-        try {
-          token = (await Notifications.getExpoPushTokenAsync({ projectId: projectId })).data;
-        } catch (pushError) {
-          console.log("Aviso: Token push pulado no ambiente Dev Client sem Firebase.");
-          return null; 
-        }
+        const pushTokenString = (
+          await Notifications.getExpoPushTokenAsync({
+            projectId,
+          })
+        ).data;
         
+        token = pushTokenString;
+
+        if (token && userId) {
+            const { error } = await supabase
+            .from('profiles')
+            .update({ push_token: token })
+            .eq('id', userId);
+            
+            if (error) console.error(error);
+        }
+
       } catch (e) {
-        console.log("Erro de permissão:", e);
+        console.error(e);
       }
     }
 
-    if (token && userId) {
-      await supabase.from('profiles').update({ push_token: token }).eq('id', userId);
-    }
     return token;
   }
 
   async triggerPushNotification(title: string, body: string) {
-  const { data } = await supabase.from('profiles').select('push_token').not('push_token', 'is', null);
-  const tokens = data?.map(i => i.push_token) || [];
+    try {
+        const { data: profiles, error } = await supabase
+            .from('profiles')
+            .select('push_token')
+            .not('push_token', 'is', null);
 
-  if (tokens.length === 0) return;
+        if (error || !profiles) {
+            return;
+        }
 
-  await supabase.functions.invoke('send-push', {
-    body: { tokens, title, body }
-  });
-}
+        const tokens = [...new Set(profiles.map(p => p.push_token).filter(t => t && t.length > 10))];
+
+        if (tokens.length === 0) return;
+
+        const messages = tokens.map(token => ({
+            to: token,
+            sound: 'default',
+            title: title,
+            body: body,
+            data: { data: 'goes here' },
+            channelId: 'default',
+        }));
+
+        await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Accept-encoding': 'gzip, deflate',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(messages),
+        });
+
+    } catch (error) {
+        console.error(error);
+    }
+  }
 }
 
 export const notificationService = new NotificationService();
